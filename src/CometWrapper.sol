@@ -119,10 +119,10 @@ contract CometWrapper is ERC4626, CometHelpers {
 
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
         }
-        // Asset transfers in Comet may lead to decrease of this contract's principal/shares by 1 more than the 
+        // Asset transfers in Comet may lead to decrease of this contract's principal/shares by 1 more than the
         // `shares` argument. Taking into account this quirk in Comet's transfer logic, we always decrease `shares`
         // by 1 before converting to assets and doing the transfer. We then proceed to burn the actual `shares` amount
-        // that was decreased during the Comet transfer. 
+        // that was decreased during the Comet transfer.
         // In this way, any rounding error would be in favor of CometWrapper and CometWrapper will be protected
         // from insolvency due to lack of assets that can be withdrawn by users.
         assets = convertToAssets(shares-1);
@@ -155,7 +155,7 @@ contract CometWrapper is ERC4626, CometHelpers {
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         uint256 allowed = msg.sender == from ? type(uint256).max : allowance[from][msg.sender]; // Saves gas for limited approvals.
 
-        if (allowed < amount) revert LackAllowance();
+        if (allowed < amount) revert InsufficientAllowance();
         if (allowed != type(uint256).max) allowance[from][msg.sender] = allowed - amount;
 
         transferInternal(from, to, amount);
@@ -178,7 +178,7 @@ contract CometWrapper is ERC4626, CometHelpers {
 
     /// @notice Total assets of an account that are managed by this vault
     /// @dev The asset balance is computed from an account's shares balance which mirrors how Comet
-    /// computes token balances. This is done this way since balances are ever-increasing due to 
+    /// computes token balances. This is done this way since balances are ever-increasing due to
     /// interest accrual.
     /// @param account The address to be queried
     /// @return The total amount of assets held by an account
@@ -304,7 +304,7 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @notice Returns the amount of assets that the Vault would exchange for the amount of shares provided, in an ideal
     /// scenario where all the conditions are met.
     /// @dev Treats shares as principal and computes for assets by taking into account interest accrual. Relies on latest
-    /// `baseSupplyIndex` from Comet which is the global index used for interest accrual the from supply rate. 
+    /// `baseSupplyIndex` from Comet which is the global index used for interest accrual the from supply rate.
     /// @param shares The amount of shares to be converted to assets
     /// @return The total amount of assets computed from the given shares
     function convertToAssets(uint256 shares) public view override returns (uint256) {
