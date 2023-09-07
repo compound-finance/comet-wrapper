@@ -457,6 +457,54 @@ contract CometWrapperTest is BaseTest, CometMath {
         assertLe(comet.balanceOf(alice), expectedAliceCometBalance);
     }
 
+    // TODO: failing due to allowance bug
+    function test_withdrawUsesAllowances() public {
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.mint(5_000e6, alice);
+        vm.stopPrank();
+
+        vm.prank(alice);
+        cometWrapper.approve(bob, 2_700e6);
+
+        uint256 sharesToWithdraw = 2_500e6;
+        uint256 assetsToWithdraw = cometWrapper.convertToAssets(sharesToWithdraw);
+
+        vm.startPrank(bob);
+        // Allowances should be updated when withdraw is done
+        assertEq(cometWrapper.allowance(alice, bob), 2_700e6);
+        cometWrapper.withdraw(assetsToWithdraw, bob, alice);
+        assertApproxEqAbs(cometWrapper.balanceOf(alice), 5_000e6 - sharesToWithdraw, 1);
+
+        // Reverts if trying to withdraw again now that allowance is used up
+        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        cometWrapper.withdraw(assetsToWithdraw, bob, alice);
+        vm.stopPrank();
+        assertEq(cometWrapper.allowance(alice, bob), 200e6);
+
+        // Infinite allowance does not decrease allowance
+        vm.prank(bob);
+        cometWrapper.approve(alice, type(uint256).max);
+        assertEq(cometWrapper.allowance(bob, alice), type(uint256).max);
+
+        vm.startPrank(alice);
+        cometWrapper.withdraw(assetsToWithdraw, alice, bob);
+        assertEq(cometWrapper.allowance(bob, alice), type(uint256).max);
+        vm.stopPrank();
+    }
+
+    // TODO: failing due to allowance bug
+    function test_withdraw_revertsOnInsufficientAllowance() public {
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.deposit(1_000e6, alice);
+        vm.stopPrank();
+
+        vm.prank(bob);
+        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        cometWrapper.withdraw(900e6, bob, alice);
+    }
+
     // TODO: turn into fuzz, like test_redeem
     function test_mint() public {
         vm.startPrank(alice);
@@ -537,6 +585,51 @@ contract CometWrapperTest is BaseTest, CometMath {
 
         assertEq(cometWrapper.totalSupply(), unsigned104(comet.userBasic(wrapperAddress).principal));
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
+    }
+
+    function test_redeemUsesAllowances() public {
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.mint(5_000e6, alice);
+        vm.stopPrank();
+
+        vm.prank(alice);
+        cometWrapper.approve(bob, 2_700e6);
+
+        uint256 sharesToWithdraw = 2_500e6;
+
+        vm.startPrank(bob);
+        // Allowances should be updated when redeem is done
+        assertEq(cometWrapper.allowance(alice, bob), 2_700e6);
+        cometWrapper.redeem(sharesToWithdraw, bob, alice);
+        assertApproxEqAbs(cometWrapper.balanceOf(alice), 5_000e6 - sharesToWithdraw, 1);
+
+        // Reverts if trying to redeem again now that allowance is used up
+        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        cometWrapper.redeem(sharesToWithdraw, bob, alice);
+        vm.stopPrank();
+        assertEq(cometWrapper.allowance(alice, bob), 200e6);
+
+        // Infinite allowance does not decrease allowance
+        vm.prank(bob);
+        cometWrapper.approve(alice, type(uint256).max);
+        assertEq(cometWrapper.allowance(bob, alice), type(uint256).max);
+
+        vm.startPrank(alice);
+        cometWrapper.redeem(sharesToWithdraw, alice, bob);
+        assertEq(cometWrapper.allowance(bob, alice), type(uint256).max);
+        vm.stopPrank();
+    }
+
+    function test_redeem_revertsOnInsufficientAllowance() public {
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.mint(1_000e6, alice);
+        vm.stopPrank();
+
+        vm.prank(bob);
+        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        cometWrapper.redeem(900e6, bob, alice);
     }
 
     // TODO: test redeem from and to
@@ -672,5 +765,4 @@ contract CometWrapperTest is BaseTest, CometMath {
 }
 
 // TODO: add fuzz testing
-// TODO: allow tests
 // TODO: add tests for cWETHv3 decimals
