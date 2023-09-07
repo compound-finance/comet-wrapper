@@ -34,7 +34,7 @@ contract CometWrapperTest is BaseTest, CometMath {
         assertEq(cometWrapper.totalAssets(), 0);
     }
 
-    function test_constructorRevertsOnInvalidComet() public {
+    function test_constructor_revertsOnInvalidComet() public {
         // reverts on zero address
         vm.expectRevert();
         new CometWrapper(ERC20(address(0)), cometRewards, "Name", "Symbol");
@@ -48,7 +48,7 @@ contract CometWrapperTest is BaseTest, CometMath {
         new CometWrapper(usdc, cometRewards, "Name", "Symbol");
     }
 
-    function test_constructorRevertsOnInvalidCometRewards() public {
+    function test_constructor_revertsOnInvalidCometRewards() public {
         // reverts on zero address
         vm.expectRevert(CometHelpers.ZeroAddress.selector);
         new CometWrapper(ERC20(address(comet)), ICometRewards(address(0)), "Name", "Symbol");
@@ -94,7 +94,7 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_previewDeposit() public {
-        assertEq(cometWrapper.balanceOf(alice), 0e6);
+        assertEq(cometWrapper.balanceOf(alice), 0);
 
         uint256 aliceCometBalance = comet.balanceOf(alice);
         uint256 alicePreviewedSharesReceived = cometWrapper.previewDeposit(5_000e6);
@@ -110,7 +110,7 @@ contract CometWrapperTest is BaseTest, CometMath {
         assertEq(alicePreviewedSharesReceived, aliceActualSharesReceived);
         assertEq(alicePreviewedSharesReceived, aliceSharesFromAssets);
 
-        assertEq(cometWrapper.balanceOf(bob), 0e6);
+        assertEq(cometWrapper.balanceOf(bob), 0);
 
         uint256 bobCometBalance = comet.balanceOf(bob);
         uint256 bobPreviewedSharesReceived = cometWrapper.previewDeposit(5_000e6);
@@ -130,7 +130,7 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_previewMint() public {
-        assertEq(cometWrapper.balanceOf(alice), 0e6);
+        assertEq(cometWrapper.balanceOf(alice), 0);
 
         uint256 aliceCometBalance = comet.balanceOf(alice);
         uint256 alicePreviewedAssetsUsed = cometWrapper.previewMint(5_000e6);
@@ -147,7 +147,7 @@ contract CometWrapperTest is BaseTest, CometMath {
         assertEq(alicePreviewedAssetsUsed, aliceAssetsFromShares);
         assertApproxEqAbs(cometWrapper.balanceOf(alice), 5_000e6, 1);
 
-        assertEq(cometWrapper.balanceOf(bob), 0e6);
+        assertEq(cometWrapper.balanceOf(bob), 0);
 
         uint256 bobCometBalance = comet.balanceOf(bob);
         uint256 bobPreviewedAssetsUsed = cometWrapper.previewMint(5_000e6);
@@ -439,7 +439,7 @@ contract CometWrapperTest is BaseTest, CometMath {
 
     // TODO: can remove? is there a need for these checks?
     // TODO: maybe to prevent 0 shares minting non-zero values? add fuzz tests to verify this can't happen
-    function test_disallowZeroSharesOrAssets() public {
+    function test_revertsOnZeroSharesOrAssets() public {
         vm.expectRevert(CometHelpers.ZeroShares.selector);
         cometWrapper.mint(0, alice);
         vm.expectRevert(CometHelpers.ZeroShares.selector);
@@ -538,7 +538,7 @@ contract CometWrapperTest is BaseTest, CometMath {
         vm.stopPrank();
     }
 
-    function test_transferFrom_revertInsufficientAllowance() public {
+    function test_transferFrom_revertsOnInsufficientAllowance() public {
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.mint(1_000e6, alice);
