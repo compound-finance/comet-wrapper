@@ -80,6 +80,184 @@ contract CometWrapperTest is BaseTest, CometMath {
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
     }
 
+    function test_underlyingBalance() public {
+        assertEq(cometWrapper.underlyingBalance(alice), 0);
+
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.deposit(5_000e6, alice);
+        vm.stopPrank();
+
+        assertApproxEqAbs(cometWrapper.underlyingBalance(alice), 5_000e6, 1);
+        skip(14 days);
+        assertGe(cometWrapper.underlyingBalance(alice), 5_000e6);
+    }
+
+    function test_previewDeposit() public {
+        assertEq(cometWrapper.balanceOf(alice), 0e6);
+
+        uint256 aliceCometBalance = comet.balanceOf(alice);
+        uint256 alicePreviewedSharesReceived = cometWrapper.previewDeposit(5_000e6);
+        uint256 aliceSharesFromAssets = cometWrapper.convertToShares(5_000e6);
+
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        uint256 aliceActualSharesReceived = cometWrapper.deposit(5_000e6, alice);
+        vm.stopPrank();
+
+        assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance - 5_000e6, 1);
+        assertEq(cometWrapper.balanceOf(alice), alicePreviewedSharesReceived);
+        assertEq(alicePreviewedSharesReceived, aliceActualSharesReceived);
+        assertEq(alicePreviewedSharesReceived, aliceSharesFromAssets);
+
+        assertEq(cometWrapper.balanceOf(bob), 0e6);
+
+        uint256 bobCometBalance = comet.balanceOf(bob);
+        uint256 bobPreviewedSharesReceived = cometWrapper.previewDeposit(5_000e6);
+        uint256 bobSharesFromAssets = cometWrapper.convertToShares(5_000e6);
+
+        vm.startPrank(bob);
+        comet.allow(wrapperAddress, true);
+        uint256 bobActualSharesReceived = cometWrapper.deposit(5_000e6, bob);
+        vm.stopPrank();
+
+        assertApproxEqAbs(comet.balanceOf(bob), bobCometBalance - 5_000e6, 1);
+        // TODO: investigate rounding
+        assertApproxEqAbs(cometWrapper.balanceOf(bob), bobPreviewedSharesReceived, 1);
+        assertApproxEqAbs(bobPreviewedSharesReceived, bobActualSharesReceived, 1);
+        assertGe(bobPreviewedSharesReceived, bobActualSharesReceived);
+        assertEq(bobPreviewedSharesReceived, bobSharesFromAssets);
+    }
+
+    function test_previewMint() public {
+        assertEq(cometWrapper.balanceOf(alice), 0e6);
+
+        uint256 aliceCometBalance = comet.balanceOf(alice);
+        uint256 alicePreviewedAssetsUsed = cometWrapper.previewMint(5_000e6);
+        uint256 aliceAssetsFromShares = cometWrapper.convertToAssets(5_000e6);
+
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        uint256 aliceActualAssetsUsed = cometWrapper.mint(5_000e6, alice);
+        vm.stopPrank();
+
+        // TODO: investigate rounding
+        assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance - alicePreviewedAssetsUsed, 1);
+        assertEq(alicePreviewedAssetsUsed, aliceActualAssetsUsed);
+        assertEq(alicePreviewedAssetsUsed, aliceAssetsFromShares);
+        assertApproxEqAbs(cometWrapper.balanceOf(alice), 5_000e6, 1);
+
+        assertEq(cometWrapper.balanceOf(bob), 0e6);
+
+        uint256 bobCometBalance = comet.balanceOf(bob);
+        uint256 bobPreviewedAssetsUsed = cometWrapper.previewMint(5_000e6);
+        uint256 bobAssetsFromShares = cometWrapper.convertToAssets(5_000e6);
+
+        vm.startPrank(bob);
+        comet.allow(wrapperAddress, true);
+        uint256 bobActualAssetsUsed = cometWrapper.mint(5_000e6, bob);
+        vm.stopPrank();
+
+        // TODO: investigate rounding
+        assertApproxEqAbs(comet.balanceOf(bob), bobCometBalance - bobPreviewedAssetsUsed, 1);
+        assertEq(bobPreviewedAssetsUsed, bobActualAssetsUsed);
+        assertEq(bobPreviewedAssetsUsed, bobAssetsFromShares);
+        // TODO: rounded down by 2 instead of 1
+        assertApproxEqAbs(cometWrapper.balanceOf(bob), 5_000e6, 2);
+    }
+
+    function test_previewWithdraw() public {
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.deposit(5_000e6, alice);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.deposit(5_000e6, bob);
+        vm.stopPrank();
+
+        uint256 aliceCometBalance = comet.balanceOf(alice);
+        uint256 aliceWrapperBalance = cometWrapper.balanceOf(alice);
+        uint256 alicePreviewedSharesUsed = cometWrapper.previewWithdraw(2_500e6);
+        uint256 aliceSharesFromAssets = cometWrapper.convertToShares(2_500e6);
+
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        uint256 aliceActualSharesUsed = cometWrapper.withdraw(2_500e6, alice, alice);
+        vm.stopPrank();
+
+        // TODO: investigate rounding
+        assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance + 2_500e6, 1);
+        assertApproxEqAbs(cometWrapper.balanceOf(alice), aliceWrapperBalance - alicePreviewedSharesUsed, 1);
+        assertApproxEqAbs(alicePreviewedSharesUsed, aliceActualSharesUsed, 1);
+        assertLe(alicePreviewedSharesUsed, aliceActualSharesUsed);
+        assertEq(alicePreviewedSharesUsed, aliceSharesFromAssets);
+
+        uint256 bobCometBalance = comet.balanceOf(bob);
+        uint256 bobWrapperBalance = cometWrapper.balanceOf(bob);
+        uint256 bobPreviewedSharesUsed = cometWrapper.previewWithdraw(2_500e6);
+        uint256 bobSharesFromAssets = cometWrapper.convertToShares(2_500e6);
+
+        vm.startPrank(bob);
+        comet.allow(wrapperAddress, true);
+        uint256 bobActualSharesUsed = cometWrapper.withdraw(2_500e6, bob, bob);
+        vm.stopPrank();
+
+        // TODO: investigate rounding
+        assertApproxEqAbs(comet.balanceOf(bob), bobCometBalance + 2_500e6, 1);
+        assertApproxEqAbs(cometWrapper.balanceOf(bob), bobWrapperBalance - bobPreviewedSharesUsed, 1);
+        assertApproxEqAbs(bobPreviewedSharesUsed, bobActualSharesUsed, 1);
+        assertLe(bobPreviewedSharesUsed, bobActualSharesUsed);
+        assertEq(bobPreviewedSharesUsed, bobSharesFromAssets);
+    }
+
+    function test_previewRedeem() public {
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.mint(5_000e6, alice);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.mint(5_000e6, bob);
+        vm.stopPrank();
+
+        uint256 aliceCometBalance = comet.balanceOf(alice);
+        uint256 aliceWrapperBalance = cometWrapper.balanceOf(alice);
+        uint256 alicePreviewedAssetsReceived = cometWrapper.previewRedeem(2_500e6);
+        uint256 aliceAssetsFromShares = cometWrapper.convertToAssets(2_500e6);
+
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        uint256 aliceActualAssetsReceived = cometWrapper.redeem(2_500e6, alice, alice);
+        vm.stopPrank();
+
+        // TODO: investigate rounding
+        assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance + alicePreviewedAssetsReceived, 2);
+        assertApproxEqAbs(cometWrapper.balanceOf(alice), aliceWrapperBalance - 2_500e6, 1);
+        assertApproxEqAbs(alicePreviewedAssetsReceived, aliceActualAssetsReceived, 1);
+        assertGe(alicePreviewedAssetsReceived, aliceActualAssetsReceived);
+        assertEq(alicePreviewedAssetsReceived, aliceAssetsFromShares);
+
+        uint256 bobCometBalance = comet.balanceOf(bob);
+        uint256 bobWrapperBalance = cometWrapper.balanceOf(bob);
+        uint256 bobPreviewedAssetsReceived = cometWrapper.previewRedeem(2_500e6);
+        uint256 bobAssetsFromShares = cometWrapper.convertToAssets(2_500e6);
+
+        vm.startPrank(bob);
+        comet.allow(wrapperAddress, true);
+        uint256 bobActualAssetsReceived = cometWrapper.redeem(2_500e6, bob, bob);
+        vm.stopPrank();
+
+        // TODO: investigate rounding
+        assertApproxEqAbs(comet.balanceOf(bob), bobCometBalance + bobPreviewedAssetsReceived, 2);
+        assertApproxEqAbs(cometWrapper.balanceOf(bob), bobWrapperBalance - 2_500e6, 1);
+        assertApproxEqAbs(bobPreviewedAssetsReceived, bobActualAssetsReceived, 1);
+        assertGe(bobPreviewedAssetsReceived, bobActualAssetsReceived);
+        assertEq(bobPreviewedAssetsReceived, bobAssetsFromShares);
+    }
+
     function test_nullifyInflationAttacks() public {
         assertEq(cometWrapper.totalAssets(), 0);
 
@@ -390,3 +568,4 @@ contract CometWrapperTest is BaseTest, CometMath {
 
 // TODO: add fuzz testing
 // TODO: allow tests
+// TODO: add tests for cWETHv3 decimals
