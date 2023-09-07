@@ -9,7 +9,7 @@ contract RewardsTest is BaseTest {
     address constant configuratorAddress = 0x316f9708bB98af7dA9c68C1C3b5e79039cD336E3;
     address constant proxyAdminAddress = 0x1EC63B5883C3481134FD50D5DAebc83Ecd2E8779;
 
-    function test__getRewardOwed() public {
+    function test_getRewardOwed() public {
         enableRewardsAccrual();
 
         // Alice and Bob have same amount of funds in both CometWrapper and Comet
@@ -33,7 +33,7 @@ contract RewardsTest is BaseTest {
         assertEq(cometWrapper.getRewardOwed(alice), 0);
         assertEq(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed);
 
-        vm.warp(block.timestamp + 7 days);
+        skip(7 days);
 
         // Rewards accrual in CometWrapper matches rewards accrual in Comet
         assertGt(cometWrapper.getRewardOwed(alice), 0);
@@ -48,7 +48,7 @@ contract RewardsTest is BaseTest {
         );
     }
 
-    function test__claimTo() public {
+    function test_claimTo() public {
         enableRewardsAccrual();
 
         // Alice and Bob have same amount of funds in both CometWrapper and Comet
@@ -81,6 +81,8 @@ contract RewardsTest is BaseTest {
 
         assertEq(wrapperRewards, rewardsFromComet);
 
+        skip(2188 days);
+
         vm.startPrank(bob);
         cometRewards.claim(cometAddress, bob, true);
         rewardsFromComet = comp.balanceOf(bob);
@@ -91,7 +93,7 @@ contract RewardsTest is BaseTest {
         assertEq(wrapperRewards, rewardsFromComet);
     }
 
-    function test__accrueRewards() public {
+    function test_accrueRewards() public {
         enableRewardsAccrual();
 
         vm.prank(cusdcHolder);
@@ -109,9 +111,11 @@ contract RewardsTest is BaseTest {
         cometWrapper.accrueRewards(alice);
         (baseTrackingAccrued,) = cometWrapper.userBasic(alice);
         assertGt(baseTrackingAccrued, 0);
+        assertEq(baseTrackingAccrued, comet.baseTrackingAccrued(address(cometWrapper)));
     }
 
-    function test__accrueRewardsBeforeBalanceChanges() public {
+    // Tests that previously accrued rewards persist even after a user's Comet Wrapper balance changes
+    function test_accrueRewardsBeforeBalanceChanges() public {
         enableRewardsAccrual();
         uint256 snapshot = vm.snapshot();
 
@@ -121,7 +125,7 @@ contract RewardsTest is BaseTest {
         cometWrapper.transfer(bob, 5_000e6);
 
         // Alice should have 30 days worth of accrued rewards for her 10K WcUSDC
-        assertApproxEqAbs(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed, 1000);
+        assertEq(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed);
         // Bob should have no rewards accrued yet since his balance prior to the transfer was 0
         assertEq(cometWrapper.getRewardOwed(bob), 0);
 
@@ -134,7 +138,7 @@ contract RewardsTest is BaseTest {
         cometWrapper.redeem(5_000e6, alice, alice);
 
         // Alice should have 30 days worth of accrued rewards for her 10K WcUSDC and not for 5K WcUSDC
-        assertApproxEqAbs(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed, 1000);
+        assertEq(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed);
 
         vm.revertTo(snapshot);
         snapshot = vm.snapshot();
@@ -145,7 +149,7 @@ contract RewardsTest is BaseTest {
         cometWrapper.withdraw(5_000e6, alice, alice);
 
         // Alice should have 30 days worth of accrued rewards for her 10K WcUSDC and not for 5K WcUSDC
-        assertApproxEqAbs(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed, 1000);
+        assertEq(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed);
 
         vm.revertTo(snapshot);
         snapshot = vm.snapshot();
@@ -156,8 +160,8 @@ contract RewardsTest is BaseTest {
         cometWrapper.mint(5_000e6, alice);
 
         // Alice should have 30 days worth of accrued rewards for her 10K WcUSDC and not for 5K WcUSDC
-        assertApproxEqAbs(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed, 1000);
-        
+        assertEq(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed);
+
         vm.revertTo(snapshot);
         snapshot = vm.snapshot();
 
@@ -167,7 +171,7 @@ contract RewardsTest is BaseTest {
         cometWrapper.deposit(5_000e6, alice);
 
         // Alice should have 30 days worth of accrued rewards for her 10K WcUSDC and not for 5K WcUSDC
-        assertApproxEqAbs(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed, 1000);
+        assertEq(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed);
     }
 
     function setupAliceBalance() internal {
@@ -185,8 +189,13 @@ contract RewardsTest is BaseTest {
         ICometProxyAdmin proxyAdmin = ICometProxyAdmin(proxyAdminAddress);
 
         vm.startPrank(governor);
-        configurator.setBaseTrackingSupplySpeed(cometAddress, 2e14);
+        configurator.setBaseTrackingSupplySpeed(cometAddress, 2e14); // 0.2 COMP/second
         proxyAdmin.deployAndUpgradeTo(Deployable(configuratorAddress), cometAddress);
         vm.stopPrank();
     }
 }
+
+// TODO: test cWETHv3
+// TODO: test L2 reward contracts that use multipliers
+// TODO: claimTo on behalf of someone else
+// TODO: multiple reward contracts?

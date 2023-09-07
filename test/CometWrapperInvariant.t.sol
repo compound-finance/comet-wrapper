@@ -9,7 +9,7 @@ contract CometWrapperInvariantTest is BaseTest, CometMath {
     // - totalAssets must always be <= comet.balanceOf(address(cometWrapper))
     // - sum of all underlyingBalances of accounts <= totalAssets
     // - sum of user balances == cometWrapper's principal in comet
-    function test__contractBalanceInvariants(uint256 amount1, uint256 amount2) public {
+    function test_contractBalanceInvariants(uint256 amount1, uint256 amount2) public {
         vm.assume(amount1 <= 2**48);
         vm.assume(amount2 <= 2**48);
         vm.assume(amount1 + amount2 < comet.balanceOf(cusdcHolder));
@@ -60,7 +60,7 @@ contract CometWrapperInvariantTest is BaseTest, CometMath {
     // Invariants:
     // - transfers must not change totalSupply
     // - transfers must not change totalAssets
-    function test__transferInvariants(uint256 amount1, uint256 amount2) public {
+    function test_transferInvariants(uint256 amount1, uint256 amount2) public {
         vm.assume(amount1 <= 2**48);
         vm.assume(amount2 <= 2**48);
         vm.assume(amount1 + amount2 < comet.balanceOf(cusdcHolder));
