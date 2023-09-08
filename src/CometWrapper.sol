@@ -92,8 +92,12 @@ contract CometWrapper is ERC4626, CometHelpers {
         if (assets == 0) revert ZeroAssets();
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
-
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            shares = convertToShares(assets);
+            if (allowed < shares) revert InsufficientAllowance();
+            // TODO: Move this to after shares is recomputed
+            if (allowed != type(uint256).max) {
+                allowance[owner][msg.sender] = allowed - shares;
+            }
         }
 
         accrueInternal(owner);
@@ -115,9 +119,11 @@ contract CometWrapper is ERC4626, CometHelpers {
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256 assets) {
         if (shares == 0) revert ZeroShares();
         if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
-
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals
+            if (allowed < shares) revert InsufficientAllowance();
+            if (allowed != type(uint256).max) {
+                allowance[owner][msg.sender] = allowed - shares;
+            }
         }
         // Asset transfers in Comet may lead to decrease of this contract's principal/shares by 1 more than the
         // `shares` argument. Taking into account this quirk in Comet's transfer logic, we always decrease `shares`
@@ -154,9 +160,10 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @return bool Indicates success of the transfer
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         uint256 allowed = msg.sender == from ? type(uint256).max : allowance[from][msg.sender]; // Saves gas for limited approvals.
-
         if (allowed < amount) revert InsufficientAllowance();
-        if (allowed != type(uint256).max) allowance[from][msg.sender] = allowed - amount;
+        if (allowed != type(uint256).max) {
+            allowance[from][msg.sender] = allowed - amount;
+        }
 
         transferInternal(from, to, amount);
         return true;
