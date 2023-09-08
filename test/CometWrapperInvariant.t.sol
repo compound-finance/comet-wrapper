@@ -36,14 +36,32 @@ contract CometWrapperInvariantTest is BaseTest, CometMath {
 
         skip(10000 days);
 
-        vm.startPrank(bob);
-        cometWrapper.mint(bobBalance/3, bob);
-        vm.stopPrank();
+        vm.prank(alice);
+        cometWrapper.mint(aliceBalance/3, alice);
         assertEq(comet.balanceOf(address(cometWrapper)), cometWrapper.totalAssets());
 
-        vm.startPrank(alice);
-        cometWrapper.mint(aliceBalance/3, alice);
-        vm.stopPrank();
+        vm.prank(bob);
+        cometWrapper.mint(bobBalance/3, bob);
+        assertEq(comet.balanceOf(address(cometWrapper)), cometWrapper.totalAssets());
+
+        assertEq(cometWrapper.balanceOf(alice) + cometWrapper.balanceOf(bob), unsigned256(comet.userBasic(address(cometWrapper)).principal));
+
+        vm.prank(alice);
+        cometWrapper.withdraw(aliceBalance/4, alice, alice);
+        assertEq(comet.balanceOf(address(cometWrapper)), cometWrapper.totalAssets());
+
+        vm.prank(bob);
+        cometWrapper.withdraw(bobBalance/4, bob, bob);
+        assertEq(comet.balanceOf(address(cometWrapper)), cometWrapper.totalAssets());
+
+        assertEq(cometWrapper.balanceOf(alice) + cometWrapper.balanceOf(bob), unsigned256(comet.userBasic(address(cometWrapper)).principal));
+
+        vm.prank(alice);
+        cometWrapper.redeem(aliceBalance/5, alice, alice);
+        assertEq(comet.balanceOf(address(cometWrapper)), cometWrapper.totalAssets());
+
+        vm.prank(bob);
+        cometWrapper.redeem(bobBalance/5, bob, bob);
         assertEq(comet.balanceOf(address(cometWrapper)), cometWrapper.totalAssets());
 
         assertEq(cometWrapper.balanceOf(alice) + cometWrapper.balanceOf(bob), unsigned256(comet.userBasic(address(cometWrapper)).principal));
@@ -51,10 +69,14 @@ contract CometWrapperInvariantTest is BaseTest, CometMath {
         vm.startPrank(alice);
         cometWrapper.redeem(cometWrapper.maxRedeem(alice), alice, alice);
         vm.stopPrank();
+        assertEq(comet.balanceOf(address(cometWrapper)), cometWrapper.totalAssets());
 
         vm.startPrank(bob);
         cometWrapper.redeem(cometWrapper.maxRedeem(bob), bob, bob);
         vm.stopPrank();
+        assertEq(comet.balanceOf(address(cometWrapper)), cometWrapper.totalAssets());
+
+        assertEq(cometWrapper.balanceOf(alice) + cometWrapper.balanceOf(bob), unsigned256(comet.userBasic(address(cometWrapper)).principal));
     }
 
     // Invariants:
