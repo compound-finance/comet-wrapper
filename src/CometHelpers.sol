@@ -10,7 +10,7 @@ contract CometHelpers is CometMath {
     uint64 internal constant BASE_INDEX_SCALE = 1e15;
     uint64 internal constant BASE_ACCRUAL_SCALE = 1e6;
 
-    error LackAllowance();
+    error InsufficientAllowance();
     error ZeroShares();
     error ZeroAssets();
     error ZeroAddress();
