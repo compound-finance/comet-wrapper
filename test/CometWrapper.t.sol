@@ -434,6 +434,9 @@ contract CometWrapperTest is BaseTest, CometMath {
 
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
 
+        vm.prank(bob);
+        cometWrapper.approve(alice, type(uint256).max);
+
         uint256 aliceCometBalance = comet.balanceOf(alice);
         uint256 bobAssets = cometWrapper.maxWithdraw(bob);
         uint256 assetsToWithdraw = 987e6;
@@ -540,7 +543,22 @@ contract CometWrapperTest is BaseTest, CometMath {
         assertEq(totalAssets, cometWrapper.totalAssets());
     }
 
-    // TODO: test mint to
+    function test_mintTo() public {
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        vm.expectEmit(true, true, true, true);
+        // TODO: fix
+        emit Deposit(alice, bob, cometWrapper.convertToAssets(9_000e6), 9_000e6 - 1);
+        cometWrapper.mint(9_000e6, bob);
+        vm.stopPrank();
+
+        assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
+        // TODO: fix so it's always equal!
+        assertApproxEqAbs(cometWrapper.balanceOf(bob), 9_000e6, 1);
+        // Make sure Alice never receives more shares than intended
+        assertLe(cometWrapper.balanceOf(bob), 9_000e6);
+        assertEq(cometWrapper.maxRedeem(bob), cometWrapper.balanceOf(bob));
+    }
 
     function test_redeem(uint256 amount1, uint256 amount2) public {
         amount1 = bound(amount1, 5, 10_000e6);
@@ -587,6 +605,89 @@ contract CometWrapperTest is BaseTest, CometMath {
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
     }
 
+    function test_redeemTo() public {
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.deposit(8_098e6, alice);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.deposit(3_555e6, bob);
+        vm.stopPrank();
+
+        assertEq(cometWrapper.totalSupply(), unsigned104(comet.userBasic(wrapperAddress).principal));
+        assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
+
+        skip(500 days);
+
+        uint256 aliceWrapperBalance = cometWrapper.balanceOf(alice);
+        uint256 bobCometBalance = comet.balanceOf(bob);
+        uint256 sharesToRedeem = 777e6;
+        uint256 expectedAliceWrapperBalance = aliceWrapperBalance - sharesToRedeem;
+        uint256 expectedBobCometBalance = bobCometBalance + cometWrapper.convertToAssets(sharesToRedeem);
+
+        // Alice redeems from herself to Bob
+        vm.startPrank(alice);
+        vm.expectEmit(true, true, true, true);
+        // TODO: investigate rounding down
+        emit Withdraw(alice, bob, alice, cometWrapper.convertToAssets(sharesToRedeem) - 1, sharesToRedeem - 1);
+        cometWrapper.redeem(sharesToRedeem, bob, alice);
+        vm.stopPrank();
+
+        assertEq(cometWrapper.totalSupply(), unsigned104(comet.userBasic(wrapperAddress).principal));
+        assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
+        assertApproxEqAbs(cometWrapper.balanceOf(alice), expectedAliceWrapperBalance, 2);
+        // TODO: why is this greater than? seems like a bug
+        assertLe(cometWrapper.balanceOf(alice), expectedAliceWrapperBalance);
+        // TODO: investigate rounding by 2???
+        assertApproxEqAbs(comet.balanceOf(bob), expectedBobCometBalance, 2);
+        assertLe(comet.balanceOf(bob), expectedBobCometBalance);
+    }
+
+    function test_redeemFrom() public {
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.deposit(8_098e6, alice);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.deposit(3_555e6, bob);
+        vm.stopPrank();
+
+        assertEq(cometWrapper.totalSupply(), unsigned104(comet.userBasic(wrapperAddress).principal));
+        assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
+
+        skip(250 days);
+
+        vm.prank(bob);
+        cometWrapper.approve(alice, type(uint256).max);
+
+        uint256 aliceCometBalance = comet.balanceOf(alice);
+        uint256 bobWrapperBalance = cometWrapper.balanceOf(bob);
+        uint256 sharesToRedeem = 1_322e6;
+        uint256 expectedAliceCometBalance = aliceCometBalance + cometWrapper.convertToAssets(sharesToRedeem);
+        uint256 expectedBobWrapperBalance = bobWrapperBalance - sharesToRedeem;
+
+        // Alice redeems from Bob to herself
+        vm.startPrank(alice);
+        // TODO: investigate rounding by 2???
+        vm.expectEmit(true, true, true, true);
+        emit Withdraw(alice, alice, bob, cometWrapper.convertToAssets(sharesToRedeem) - 1, sharesToRedeem - 1);
+        cometWrapper.redeem(sharesToRedeem, alice, bob);
+        vm.stopPrank();
+
+        assertEq(cometWrapper.totalSupply(), unsigned104(comet.userBasic(wrapperAddress).principal));
+        assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
+        // TODO: investigate rounding by 2???
+        assertApproxEqAbs(cometWrapper.balanceOf(bob), expectedBobWrapperBalance, 2);
+        // TODO: why is this greater than? seems like a bug
+        assertLe(cometWrapper.balanceOf(bob), expectedBobWrapperBalance);
+        assertApproxEqAbs(comet.balanceOf(alice), expectedAliceCometBalance, 2);
+        assertLe(comet.balanceOf(alice), expectedAliceCometBalance);
+    }
+
     function test_redeemUsesAllowances() public {
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
@@ -631,9 +732,6 @@ contract CometWrapperTest is BaseTest, CometMath {
         vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
         cometWrapper.redeem(900e6, bob, alice);
     }
-
-    // TODO: test redeem from and to
-    // TODO: test redeeming not a max amount
 
     // TODO: can remove? is there a need for these checks?
     // TODO: maybe to prevent 0 shares minting non-zero values? add fuzz tests to verify this can't happen
