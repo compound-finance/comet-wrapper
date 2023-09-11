@@ -76,7 +76,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         accrueInternal(receiver);
         int104 prevPrincipal = comet.userBasic(address(this)).principal;
         asset.safeTransferFrom(msg.sender, address(this), assets);
-        shares =  unsigned256(comet.userBasic(address(this)).principal - prevPrincipal);
+        shares = unsigned256(comet.userBasic(address(this)).principal - prevPrincipal);
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
@@ -90,22 +90,26 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @return shares The amount of shares of the owner that are burned
     function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256 shares) {
         if (assets == 0) revert ZeroAssets();
+
+        // Calculate shares to burn by calculating the new principal amount
+        accrueInternal(owner);
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        uint256 prevPrincipal = totalSupply;
+        uint256 newBalance = presentValueSupply(baseSupplyIndex_, prevPrincipal) - assets;
+        uint104 newPrincipal = principalValueSupply(baseSupplyIndex_, newBalance);
+        shares = prevPrincipal - newPrincipal;
+        if (shares == 0) revert ZeroShares();
+
         if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
-            shares = convertToShares(assets);
+            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals
             if (allowed < shares) revert InsufficientAllowance();
-            // TODO: Move this to after shares is recomputed
             if (allowed != type(uint256).max) {
                 allowance[owner][msg.sender] = allowed - shares;
             }
         }
 
-        accrueInternal(owner);
-        int104 prevPrincipal = comet.userBasic(address(this)).principal;
-        asset.safeTransfer(receiver, assets);
-        shares =  unsigned256(prevPrincipal - comet.userBasic(address(this)).principal);
-        if (shares == 0) revert ZeroShares();
         _burn(owner, shares);
+        asset.safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
@@ -137,7 +141,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         accrueInternal(owner);
         int104 prevPrincipal = comet.userBasic(address(this)).principal;
         asset.safeTransfer(receiver, assets);
-        shares =  unsigned256(prevPrincipal - comet.userBasic(address(this)).principal);
+        shares = unsigned256(prevPrincipal - comet.userBasic(address(this)).principal);
         if (shares == 0) revert ZeroShares();
         _burn(owner, shares);
 
