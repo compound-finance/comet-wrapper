@@ -567,14 +567,16 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_redeem(uint256 amount1, uint256 amount2) public {
-        amount1 = bound(amount1, 5, 10_000e6);
-        amount2 = bound(amount2, 5, 10_000e6);
+        vm.assume(amount1 <= 2**48);
+        vm.assume(amount2 <= 2**48);
+        vm.assume(amount1 + amount2 < comet.balanceOf(cusdcHolder) - 100e6); // to account for borrowMin
+        vm.assume(amount1 > 100e6 && amount2 > 100e6);
 
         vm.prank(cusdcHolder);
-        comet.transfer(alice, 10_000e6);
+        comet.transfer(alice, amount1);
 
         vm.prank(cusdcHolder);
-        comet.transfer(bob, 10_000e6);
+        comet.transfer(bob, amount2);
 
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
@@ -595,18 +597,25 @@ contract CometWrapperTest is BaseTest, CometMath {
         uint256 bobShares = cometWrapper.maxRedeem(bob);
 
         // All users can fully redeem shares
+        uint256 aliceSharesToAssets = cometWrapper.convertToAssets(aliceShares);
+        uint256 aliceAssetsWithdrawn = calculateAssetsToWithdrawFromShares(aliceShares);
         vm.expectEmit(true, true, true, true);
-        // TODO: investigate round down
-        emit Withdraw(alice, alice, alice, cometWrapper.convertToAssets(aliceShares) - 1, aliceShares);
+        emit Withdraw(alice, alice, alice, aliceAssetsWithdrawn, aliceShares);
         vm.prank(alice);
         cometWrapper.redeem(aliceShares, alice, alice);
 
+        uint256 bobSharesToAssets = cometWrapper.convertToAssets(bobShares);
+        uint256 bobAssetsWithdrawn = calculateAssetsToWithdrawFromShares(bobShares);
         vm.expectEmit(true, true, true, true);
-        // TODO: investigate round down of shares... this should not happen
-        emit Withdraw(bob, bob, bob, cometWrapper.convertToAssets(bobShares) - 1, bobShares);
+        emit Withdraw(bob, bob, bob, bobAssetsWithdrawn, bobShares);
         vm.prank(bob);
         cometWrapper.redeem(bobShares, bob, bob);
 
+        // Ensure that actual assets withdrawn is <= the asset value of the shares burnt
+        assertLe(aliceAssetsWithdrawn, aliceSharesToAssets);
+        assertLe(bobAssetsWithdrawn, bobSharesToAssets);
+
+        // Ensure that the wrapper is fully backed by the underlying Comet asset
         assertEq(cometWrapper.totalSupply(), unsigned104(comet.userBasic(wrapperAddress).principal));
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
     }
@@ -636,18 +645,15 @@ contract CometWrapperTest is BaseTest, CometMath {
         // Alice redeems from herself to Bob
         vm.startPrank(alice);
         vm.expectEmit(true, true, true, true);
-        // TODO: investigate rounding down
-        emit Withdraw(alice, bob, alice, cometWrapper.convertToAssets(sharesToRedeem) - 1, sharesToRedeem - 1);
+        emit Withdraw(alice, bob, alice, cometWrapper.convertToAssets(sharesToRedeem), sharesToRedeem);
         cometWrapper.redeem(sharesToRedeem, bob, alice);
         vm.stopPrank();
 
         assertEq(cometWrapper.totalSupply(), unsigned104(comet.userBasic(wrapperAddress).principal));
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
-        assertApproxEqAbs(cometWrapper.balanceOf(alice), expectedAliceWrapperBalance, 2);
-        // TODO: why is this greater than? seems like a bug
-        assertLe(cometWrapper.balanceOf(alice), expectedAliceWrapperBalance);
-        // TODO: investigate rounding by 2???
-        assertApproxEqAbs(comet.balanceOf(bob), expectedBobCometBalance, 2);
+        assertEq(cometWrapper.balanceOf(alice), expectedAliceWrapperBalance);
+        // Bob receives 1 wei less due to rounding down behavior in Comet transfer logic
+        assertApproxEqAbs(comet.balanceOf(bob), expectedBobCometBalance, 1);
         assertLe(comet.balanceOf(bob), expectedBobCometBalance);
     }
 
@@ -678,19 +684,16 @@ contract CometWrapperTest is BaseTest, CometMath {
 
         // Alice redeems from Bob to herself
         vm.startPrank(alice);
-        // TODO: investigate rounding by 2???
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(alice, alice, bob, cometWrapper.convertToAssets(sharesToRedeem) - 1, sharesToRedeem - 1);
+        emit Withdraw(alice, alice, bob, cometWrapper.convertToAssets(sharesToRedeem), sharesToRedeem);
         cometWrapper.redeem(sharesToRedeem, alice, bob);
         vm.stopPrank();
 
         assertEq(cometWrapper.totalSupply(), unsigned104(comet.userBasic(wrapperAddress).principal));
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
-        // TODO: investigate rounding by 2???
-        assertApproxEqAbs(cometWrapper.balanceOf(bob), expectedBobWrapperBalance, 2);
-        // TODO: why is this greater than? seems like a bug
-        assertLe(cometWrapper.balanceOf(bob), expectedBobWrapperBalance);
-        assertApproxEqAbs(comet.balanceOf(alice), expectedAliceCometBalance, 2);
+        assertEq(cometWrapper.balanceOf(bob), expectedBobWrapperBalance);
+        // Alice receives 1 wei less due to rounding down behavior in Comet transfer logic
+        assertApproxEqAbs(comet.balanceOf(alice), expectedAliceCometBalance, 1);
         assertLe(comet.balanceOf(alice), expectedAliceCometBalance);
     }
 
@@ -871,6 +874,14 @@ contract CometWrapperTest is BaseTest, CometMath {
         assertEq(cometWrapper.balanceOf(bob), 400e6);
         assertEq(cometWrapper.allowance(alice, bob), 100e6);
         vm.stopPrank();
+    }
+
+    function calculateAssetsToWithdrawFromShares(uint256 shares) internal returns (uint256) {
+        uint256 currentPrincipal = cometWrapper.totalSupply();
+        uint256 newPrincipal = currentPrincipal - shares;
+        uint256 newBalance = cometWrapper.convertToAssets(newPrincipal);
+        uint256 assets = cometWrapper.totalAssets() - newBalance - 1;
+        return assets;
     }
 }
 

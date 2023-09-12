@@ -101,7 +101,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         if (shares == 0) revert ZeroShares();
 
         if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals
+            uint256 allowed = allowance[owner][msg.sender];
             if (allowed < shares) revert InsufficientAllowance();
             if (allowed != type(uint256).max) {
                 allowance[owner][msg.sender] = allowed - shares;
@@ -115,7 +115,7 @@ contract CometWrapper is ERC4626, CometHelpers {
     }
 
     /// @notice Redeems shares (Wrapped Comet) in exchange for assets (Wrapped Comet).
-    /// Caller can only withdraw assets from owner if they have been given allowance to.
+    /// Caller can only redeem shares from owner if they have been given allowance to.
     /// @param shares The amount of shares to be redeemed
     /// @param receiver The recipient address of the withdrawn assets
     /// @param owner The owner of the shares to be redeemed
@@ -123,27 +123,26 @@ contract CometWrapper is ERC4626, CometHelpers {
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256 assets) {
         if (shares == 0) revert ZeroShares();
         if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals
+            uint256 allowed = allowance[owner][msg.sender];
             if (allowed < shares) revert InsufficientAllowance();
             if (allowed != type(uint256).max) {
                 allowance[owner][msg.sender] = allowed - shares;
             }
         }
-        // Asset transfers in Comet may lead to decrease of this contract's principal/shares by 1 more than the
-        // `shares` argument. Taking into account this quirk in Comet's transfer logic, we always decrease `shares`
-        // by 1 before converting to assets and doing the transfer. We then proceed to burn the actual `shares` amount
-        // that was decreased during the Comet transfer.
-        // In this way, any rounding error would be in favor of CometWrapper and CometWrapper will be protected
-        // from insolvency due to lack of assets that can be withdrawn by users.
-        assets = convertToAssets(shares-1);
-        if (assets == 0) revert ZeroAssets();
 
         accrueInternal(owner);
-        int104 prevPrincipal = comet.userBasic(address(this)).principal;
-        asset.safeTransfer(receiver, assets);
-        shares = unsigned256(prevPrincipal - comet.userBasic(address(this)).principal);
-        if (shares == 0) revert ZeroShares();
+        // Back out the quantity of assets to withdraw in order to decrement principal by `shares`
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        uint256 currentPrincipal = totalSupply;
+        uint256 newPrincipal = currentPrincipal - shares;
+        uint256 newBalance = presentValueSupply(baseSupplyIndex_, newPrincipal);
+        // We subtract the asset amount by 1 to ensure Comet's rounding down behavior is in favor of the CometWrapper
+        assets = totalAssets() - newBalance - 1;
+
+        if (assets == 0) revert ZeroAssets();
+
         _burn(owner, shares);
+        asset.safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
