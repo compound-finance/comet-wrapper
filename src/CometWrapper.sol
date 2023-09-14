@@ -50,27 +50,29 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @notice Deposits assets into the vault and gets shares (Wrapped Comet token) in return
     /// @param assets The amount of assets to be deposited by the caller
     /// @param receiver The recipient address of the minted shares
-    /// @return shares The amount of shares that are minted to the receiver
-    function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
+    /// @return The amount of shares that are minted to the receiver
+    function deposit(uint256 assets, address receiver) public override returns (uint256) {
         if (assets == 0) revert ZeroAssets();
 
         accrueInternal(receiver);
         int104 prevPrincipal = comet.userBasic(address(this)).principal;
         asset.safeTransferFrom(msg.sender, address(this), assets);
-        shares = unsigned256(comet.userBasic(address(this)).principal - prevPrincipal);
+        uint256 shares = unsigned256(comet.userBasic(address(this)).principal - prevPrincipal);
         if (shares == 0) revert ZeroShares();
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
+
+        return shares;
     }
 
     /// @notice Mints shares (Wrapped Comet) in exchange for Comet tokens
     /// @param shares The amount of shares to be minted for the receive
     /// @param receiver The recipient address of the minted shares
-    /// @return assets The amount of assets that are deposited by the caller
-    function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
+    /// @return The amount of assets that are deposited by the caller
+    function mint(uint256 shares, address receiver) public override returns (uint256) {
         if (shares == 0) revert ZeroShares();
-        assets = convertToAssets(shares);
+        uint256 assets = convertToAssets(shares);
         if (assets == 0) revert ZeroAssets();
 
         accrueInternal(receiver);
@@ -80,6 +82,8 @@ contract CometWrapper is ERC4626, CometHelpers {
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
+
+        return assets;
     }
 
     /// @notice Withdraws assets (Comet) from the vault and burns corresponding shares (Wrapped Comet).
@@ -87,8 +91,8 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param assets The amount of assets to be withdrawn by the caller
     /// @param receiver The recipient address of the withdrawn assets
     /// @param owner The owner of the assets to be withdrawn
-    /// @return shares The amount of shares of the owner that are burned
-    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256 shares) {
+    /// @return The amount of shares of the owner that are burned
+    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
         if (assets == 0) revert ZeroAssets();
 
         // Calculate shares to burn by calculating the new principal amount
@@ -97,7 +101,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         uint256 prevPrincipal = totalSupply;
         uint256 newBalance = presentValueSupply(baseSupplyIndex_, prevPrincipal) - assets;
         uint104 newPrincipal = principalValueSupply(baseSupplyIndex_, newBalance);
-        shares = prevPrincipal - newPrincipal;
+        uint256 shares = prevPrincipal - newPrincipal;
         if (shares == 0) revert ZeroShares();
 
         if (msg.sender != owner) {
@@ -112,6 +116,8 @@ contract CometWrapper is ERC4626, CometHelpers {
         asset.safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        return shares;
     }
 
     /// @notice Redeems shares (Wrapped Comet) in exchange for assets (Wrapped Comet).
@@ -119,8 +125,8 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param shares The amount of shares to be redeemed
     /// @param receiver The recipient address of the withdrawn assets
     /// @param owner The owner of the shares to be redeemed
-    /// @return assets The amount of assets that is withdrawn and sent to the receiver
-    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256 assets) {
+    /// @return The amount of assets that is withdrawn and sent to the receiver
+    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
         if (shares == 0) revert ZeroShares();
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
@@ -137,7 +143,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         uint256 newPrincipal = currentPrincipal - shares;
         uint256 newBalance = presentValueSupply(baseSupplyIndex_, newPrincipal);
         // We subtract the asset amount by 1 to ensure Comet's rounding down behavior is in favor of the CometWrapper
-        assets = totalAssets() - newBalance - 1;
+        uint256 assets = totalAssets() - newBalance - 1;
 
         if (assets == 0) revert ZeroAssets();
 
@@ -145,6 +151,8 @@ contract CometWrapper is ERC4626, CometHelpers {
         asset.safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        return assets;
     }
 
     /// @notice Transfer shares from caller to the recipient
