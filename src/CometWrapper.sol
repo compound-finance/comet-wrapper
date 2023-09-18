@@ -44,7 +44,7 @@ contract CometWrapper is ERC4626, CometHelpers {
     function totalAssets() public view override returns (uint256) {
         uint64 baseSupplyIndex_ = accruedSupplyIndex();
         uint256 supply = totalSupply;
-        return supply > 0 ? presentValueSupply(baseSupplyIndex_, supply) : 0;
+        return supply > 0 ? presentValueSupply(baseSupplyIndex_, supply, Rounding.DOWN) : 0;
     }
 
     /// @notice Deposits assets into the vault and gets shares (Wrapped Comet token) in return
@@ -95,13 +95,8 @@ contract CometWrapper is ERC4626, CometHelpers {
     function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
         if (assets == 0) revert ZeroAssets();
 
-        // Calculate shares to burn by calculating the new principal amount
         accrueInternal(owner);
-        uint64 baseSupplyIndex_ = accruedSupplyIndex();
-        uint256 prevPrincipal = totalSupply;
-        uint256 newBalance = presentValueSupply(baseSupplyIndex_, prevPrincipal) - assets;
-        uint104 newPrincipal = principalValueSupply(baseSupplyIndex_, newBalance);
-        uint256 shares = prevPrincipal - newPrincipal;
+        uint256 shares = previewWithdraw(assets);
         if (shares == 0) revert ZeroShares();
 
         if (msg.sender != owner) {
@@ -137,14 +132,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         }
 
         accrueInternal(owner);
-        // Back out the quantity of assets to withdraw in order to decrement principal by `shares`
-        uint64 baseSupplyIndex_ = accruedSupplyIndex();
-        uint256 currentPrincipal = totalSupply;
-        uint256 newPrincipal = currentPrincipal - shares;
-        uint256 newBalance = presentValueSupply(baseSupplyIndex_, newPrincipal);
-        // We subtract the asset amount by 1 to ensure Comet's rounding down behavior is in favor of the CometWrapper
-        uint256 assets = totalAssets() - newBalance - 1;
-
+        uint256 assets = previewRedeem(shares);
         if (assets == 0) revert ZeroAssets();
 
         _burn(owner, shares);
@@ -203,7 +191,7 @@ contract CometWrapper is ERC4626, CometHelpers {
     function underlyingBalance(address account) public view returns (uint256) {
         uint64 baseSupplyIndex_ = accruedSupplyIndex();
         uint256 principal = balanceOf[account];
-        return principal > 0 ? presentValueSupply(baseSupplyIndex_, principal) : 0;
+        return principal > 0 ? presentValueSupply(baseSupplyIndex_, principal, Rounding.DOWN) : 0;
     }
 
     /// @dev Updates an account's `baseTrackingAccrued` which keeps track of rewards accrued by the account.
@@ -326,8 +314,7 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param shares The amount of shares to be converted to assets
     /// @return The total amount of assets computed from the given shares
     function convertToAssets(uint256 shares) public view override returns (uint256) {
-        uint64 baseSupplyIndex_ = accruedSupplyIndex();
-        return shares > 0 ? presentValueSupply(baseSupplyIndex_, shares) : 0;
+        return convertToAssetsInternal(shares, Rounding.DOWN);
     }
 
     /// @notice Returns the amount of shares that the Vault would exchange for the amount of assets provided, in an ideal
@@ -336,23 +323,63 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param assets The amount of assets to be converted to shares
     /// @return The total amount of shares computed from the given assets
     function convertToShares(uint256 assets) public view override returns (uint256) {
-        uint64 baseSupplyIndex_ = accruedSupplyIndex();
-        return assets > 0 ? principalValueSupply(baseSupplyIndex_, assets) : 0;
+        return convertToSharesInternal(assets, Rounding.DOWN);
+    }
+
+    /// @notice Allows an on-chain or off-chain user to simulate the effects of their deposit at the current block, given
+    /// current on-chain conditions.
+    /// @param assets The amount of assets to deposit
+    /// @return The total amount of shares that would be minted by the deposit
+    function previewDeposit(uint256 assets) public view override returns (uint256) {
+        return convertToShares(assets);
     }
 
     /// @notice Allows an on-chain or off-chain user to simulate the effects of their mint at the current block, given
     /// current on-chain conditions.
-    /// @param shares The amount of shares to be converted to assets
+    /// @param shares The amount of shares to mint
     /// @return The total amount of assets required to mint the given shares
     function previewMint(uint256 shares) public view override returns (uint256) {
-        return convertToAssets(shares);
+        // Round up so the wrapper does not take a loss
+        return convertToAssetsInternal(shares, Rounding.UP);
     }
 
     /// @notice Allows an on-chain or off-chain user to simulate the effects of their withdrawal at the current block,
     /// given current on-chain conditions.
-    /// @param assets The amount of assets to be converted to shares
+    /// @param assets The amount of assets to withdraw
     /// @return The total amount of shares required to withdraw the given assets
     function previewWithdraw(uint256 assets) public view override returns (uint256) {
-        return convertToShares(assets);
+        // Calculate the quantity of shares to burn by calculating the new principal amount
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        uint256 currentPrincipal = totalSupply;
+        uint256 newBalance = totalAssets() - assets;
+        // Round down so accounting is in the wrapper's favor
+        uint104 newPrincipal = principalValueSupply(baseSupplyIndex_, newBalance, Rounding.DOWN);
+        uint256 shares = currentPrincipal - newPrincipal;
+        return shares;
+    }
+
+    /// @notice Allows an on-chain or off-chain user to simulate the effects of their redemption at the current block,
+    /// given current on-chain conditions.
+    /// @param shares The amount of shares to redeem
+    /// @return The total amount of assets that would be withdrawn by the redemption
+    function previewRedeem(uint256 shares) public view override returns (uint256) {
+        // Back out the quantity of assets to withdraw in order to decrement principal by `shares`
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        uint256 currentPrincipal = totalSupply;
+        uint256 newPrincipal = currentPrincipal - shares;
+        // Round up so accounting is in the wrapper's favor
+        uint256 newBalance = presentValueSupply(baseSupplyIndex_, newPrincipal, Rounding.UP);
+        uint256 assets = totalAssets() - newBalance;
+        return assets;
+    }
+
+    function convertToAssetsInternal(uint256 shares, Rounding rounding) internal view returns (uint256) {
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        return shares > 0 ? presentValueSupply(baseSupplyIndex_, shares, rounding) : 0;
+    }
+
+    function convertToSharesInternal(uint256 assets, Rounding rounding) internal view returns (uint256) {
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        return assets > 0 ? principalValueSupply(baseSupplyIndex_, assets, rounding) : 0;
     }
 }

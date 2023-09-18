@@ -98,7 +98,7 @@ contract CometWrapperTest is BaseTest, CometMath {
 
         uint256 aliceCometBalance = comet.balanceOf(alice);
         uint256 alicePreviewedSharesReceived = cometWrapper.previewDeposit(5_000e6);
-        uint256 aliceSharesFromAssets = cometWrapper.convertToShares(5_000e6);
+        uint256 aliceConvertToShares = cometWrapper.convertToShares(5_000e6);
 
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
@@ -108,13 +108,13 @@ contract CometWrapperTest is BaseTest, CometMath {
         assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance - 5_000e6, 1);
         assertEq(cometWrapper.balanceOf(alice), alicePreviewedSharesReceived);
         assertEq(alicePreviewedSharesReceived, aliceActualSharesReceived);
-        assertEq(alicePreviewedSharesReceived, aliceSharesFromAssets);
+        assertEq(alicePreviewedSharesReceived, aliceConvertToShares);
 
         assertEq(cometWrapper.balanceOf(bob), 0);
 
         uint256 bobCometBalance = comet.balanceOf(bob);
         uint256 bobPreviewedSharesReceived = cometWrapper.previewDeposit(5_000e6);
-        uint256 bobSharesFromAssets = cometWrapper.convertToShares(5_000e6);
+        uint256 bobConvertToShares = cometWrapper.convertToShares(5_000e6);
 
         vm.startPrank(bob);
         comet.allow(wrapperAddress, true);
@@ -126,7 +126,7 @@ contract CometWrapperTest is BaseTest, CometMath {
         assertApproxEqAbs(cometWrapper.balanceOf(bob), bobPreviewedSharesReceived, 1);
         assertApproxEqAbs(bobPreviewedSharesReceived, bobActualSharesReceived, 1);
         assertGe(bobPreviewedSharesReceived, bobActualSharesReceived);
-        assertEq(bobPreviewedSharesReceived, bobSharesFromAssets);
+        assertEq(bobPreviewedSharesReceived, bobConvertToShares);
     }
 
     function test_previewMint() public {
@@ -134,7 +134,7 @@ contract CometWrapperTest is BaseTest, CometMath {
 
         uint256 aliceCometBalance = comet.balanceOf(alice);
         uint256 alicePreviewedAssetsUsed = cometWrapper.previewMint(5_000e6);
-        uint256 aliceAssetsFromShares = cometWrapper.convertToAssets(5_000e6);
+        uint256 aliceConvertToAssets = cometWrapper.convertToAssets(5_000e6);
 
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
@@ -143,15 +143,15 @@ contract CometWrapperTest is BaseTest, CometMath {
 
         // TODO: investigate rounding
         assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance - alicePreviewedAssetsUsed, 1);
-        assertEq(alicePreviewedAssetsUsed, aliceActualAssetsUsed);
-        assertEq(alicePreviewedAssetsUsed, aliceAssetsFromShares);
+        assertApproxEqAbs(alicePreviewedAssetsUsed, aliceActualAssetsUsed, 1);
+        assertApproxEqAbs(alicePreviewedAssetsUsed, aliceConvertToAssets, 1);
         assertApproxEqAbs(cometWrapper.balanceOf(alice), 5_000e6, 1);
 
         assertEq(cometWrapper.balanceOf(bob), 0);
 
         uint256 bobCometBalance = comet.balanceOf(bob);
         uint256 bobPreviewedAssetsUsed = cometWrapper.previewMint(5_000e6);
-        uint256 bobAssetsFromShares = cometWrapper.convertToAssets(5_000e6);
+        uint256 bobConvertToAssets = cometWrapper.convertToAssets(5_000e6);
 
         vm.startPrank(bob);
         comet.allow(wrapperAddress, true);
@@ -160,8 +160,8 @@ contract CometWrapperTest is BaseTest, CometMath {
 
         // TODO: investigate rounding
         assertApproxEqAbs(comet.balanceOf(bob), bobCometBalance - bobPreviewedAssetsUsed, 1);
-        assertEq(bobPreviewedAssetsUsed, bobActualAssetsUsed);
-        assertEq(bobPreviewedAssetsUsed, bobAssetsFromShares);
+        assertApproxEqAbs(bobPreviewedAssetsUsed, bobActualAssetsUsed, 1);
+        assertApproxEqAbs(bobPreviewedAssetsUsed, bobConvertToAssets, 1);
         // TODO: rounded down by 2 instead of 1
         assertApproxEqAbs(cometWrapper.balanceOf(bob), 5_000e6, 2);
     }
@@ -180,36 +180,40 @@ contract CometWrapperTest is BaseTest, CometMath {
         uint256 aliceCometBalance = comet.balanceOf(alice);
         uint256 aliceWrapperBalance = cometWrapper.balanceOf(alice);
         uint256 alicePreviewedSharesUsed = cometWrapper.previewWithdraw(2_500e6);
-        uint256 aliceSharesFromAssets = cometWrapper.convertToShares(2_500e6);
+        uint256 aliceConvertToShares = cometWrapper.convertToShares(2_500e6);
 
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         uint256 aliceActualSharesUsed = cometWrapper.withdraw(2_500e6, alice, alice);
         vm.stopPrank();
 
-        // TODO: investigate rounding
+        // Alice loses 1 gwei of the underlying due to Comet rounding during transfers
         assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance + 2_500e6, 1);
-        assertApproxEqAbs(cometWrapper.balanceOf(alice), aliceWrapperBalance - alicePreviewedSharesUsed, 1);
-        assertApproxEqAbs(alicePreviewedSharesUsed, aliceActualSharesUsed, 1);
-        assertLe(alicePreviewedSharesUsed, aliceActualSharesUsed);
-        assertEq(alicePreviewedSharesUsed, aliceSharesFromAssets);
+        assertLe(comet.balanceOf(alice), aliceCometBalance + 2_500e6);
+        assertEq(cometWrapper.balanceOf(alice), aliceWrapperBalance - alicePreviewedSharesUsed);
+        assertEq(alicePreviewedSharesUsed, aliceActualSharesUsed);
+        // The value from convertToShares is <= the value from previewRedeem because it doesn't account
+        // for "slippage" that occurs during integer math rounding
+        assertGe(alicePreviewedSharesUsed, aliceConvertToShares);
 
         uint256 bobCometBalance = comet.balanceOf(bob);
         uint256 bobWrapperBalance = cometWrapper.balanceOf(bob);
         uint256 bobPreviewedSharesUsed = cometWrapper.previewWithdraw(2_500e6);
-        uint256 bobSharesFromAssets = cometWrapper.convertToShares(2_500e6);
+        uint256 bobConvertToShares = cometWrapper.convertToShares(2_500e6);
 
         vm.startPrank(bob);
         comet.allow(wrapperAddress, true);
         uint256 bobActualSharesUsed = cometWrapper.withdraw(2_500e6, bob, bob);
         vm.stopPrank();
 
-        // TODO: investigate rounding
+        // Bob loses 1 gwei of the underlying due to Comet rounding during transfers
         assertApproxEqAbs(comet.balanceOf(bob), bobCometBalance + 2_500e6, 1);
-        assertApproxEqAbs(cometWrapper.balanceOf(bob), bobWrapperBalance - bobPreviewedSharesUsed, 1);
-        assertApproxEqAbs(bobPreviewedSharesUsed, bobActualSharesUsed, 1);
-        assertLe(bobPreviewedSharesUsed, bobActualSharesUsed);
-        assertEq(bobPreviewedSharesUsed, bobSharesFromAssets);
+        assertLe(comet.balanceOf(bob), bobCometBalance + 2_500e6);
+        assertEq(cometWrapper.balanceOf(bob), bobWrapperBalance - bobPreviewedSharesUsed);
+        assertEq(bobPreviewedSharesUsed, bobActualSharesUsed);
+        // The value from convertToShares is <= the value from previewRedeem because it doesn't account
+        // for "slippage" that occurs during integer math rounding
+        assertGe(bobPreviewedSharesUsed, bobConvertToShares);
     }
 
     function test_previewRedeem() public {
@@ -226,36 +230,40 @@ contract CometWrapperTest is BaseTest, CometMath {
         uint256 aliceCometBalance = comet.balanceOf(alice);
         uint256 aliceWrapperBalance = cometWrapper.balanceOf(alice);
         uint256 alicePreviewedAssetsReceived = cometWrapper.previewRedeem(2_500e6);
-        uint256 aliceAssetsFromShares = cometWrapper.convertToAssets(2_500e6);
+        uint256 aliceConvertToAssets = cometWrapper.convertToAssets(2_500e6);
 
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         uint256 aliceActualAssetsReceived = cometWrapper.redeem(2_500e6, alice, alice);
         vm.stopPrank();
 
-        // TODO: investigate rounding
-        assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance + alicePreviewedAssetsReceived, 2);
-        assertApproxEqAbs(cometWrapper.balanceOf(alice), aliceWrapperBalance - 2_500e6, 1);
-        assertApproxEqAbs(alicePreviewedAssetsReceived, aliceActualAssetsReceived, 1);
-        assertGe(alicePreviewedAssetsReceived, aliceActualAssetsReceived);
-        assertEq(alicePreviewedAssetsReceived, aliceAssetsFromShares);
+        // Alice loses 1 gwei of the underlying due to Comet rounding during transfers
+        assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance + alicePreviewedAssetsReceived, 1);
+        assertLe(comet.balanceOf(alice), aliceCometBalance + alicePreviewedAssetsReceived);
+        assertEq(cometWrapper.balanceOf(alice), aliceWrapperBalance - 2_500e6);
+        assertEq(alicePreviewedAssetsReceived, aliceActualAssetsReceived);
+        // The value from convertToAssets is >= the value from previewRedeem because it doesn't account
+        // for "slippage" that occurs during integer math rounding
+        assertLe(alicePreviewedAssetsReceived, aliceConvertToAssets);
 
         uint256 bobCometBalance = comet.balanceOf(bob);
         uint256 bobWrapperBalance = cometWrapper.balanceOf(bob);
         uint256 bobPreviewedAssetsReceived = cometWrapper.previewRedeem(2_500e6);
-        uint256 bobAssetsFromShares = cometWrapper.convertToAssets(2_500e6);
+        uint256 bobConvertToAssets = cometWrapper.convertToAssets(2_500e6);
 
         vm.startPrank(bob);
         comet.allow(wrapperAddress, true);
         uint256 bobActualAssetsReceived = cometWrapper.redeem(2_500e6, bob, bob);
         vm.stopPrank();
 
-        // TODO: investigate rounding
-        assertApproxEqAbs(comet.balanceOf(bob), bobCometBalance + bobPreviewedAssetsReceived, 2);
-        assertApproxEqAbs(cometWrapper.balanceOf(bob), bobWrapperBalance - 2_500e6, 1);
-        assertApproxEqAbs(bobPreviewedAssetsReceived, bobActualAssetsReceived, 1);
-        assertGe(bobPreviewedAssetsReceived, bobActualAssetsReceived);
-        assertEq(bobPreviewedAssetsReceived, bobAssetsFromShares);
+        // Bob loses 1 gwei of the underlying due to Comet rounding during transfers
+        assertApproxEqAbs(comet.balanceOf(bob), bobCometBalance + bobPreviewedAssetsReceived, 1);
+        assertLe(comet.balanceOf(bob), bobCometBalance + bobPreviewedAssetsReceived);
+        assertEq(cometWrapper.balanceOf(bob), bobWrapperBalance - 2_500e6);
+        assertEq(bobPreviewedAssetsReceived, bobActualAssetsReceived);
+        // The value from convertToAssets is >= the value from previewRedeem because it doesn't account
+        // for "slippage" that occurs during integer math rounding
+        assertLe(bobPreviewedAssetsReceived, bobConvertToAssets);
     }
 
     function test_nullifyInflationAttacks() public {
@@ -598,14 +606,14 @@ contract CometWrapperTest is BaseTest, CometMath {
 
         // All users can fully redeem shares
         uint256 aliceSharesToAssets = cometWrapper.convertToAssets(aliceShares);
-        uint256 aliceAssetsWithdrawn = calculateAssetsToWithdrawFromShares(aliceShares);
+        uint256 aliceAssetsWithdrawn = cometWrapper.previewRedeem(aliceShares);
         vm.expectEmit(true, true, true, true);
         emit Withdraw(alice, alice, alice, aliceAssetsWithdrawn, aliceShares);
         vm.prank(alice);
         cometWrapper.redeem(aliceShares, alice, alice);
 
         uint256 bobSharesToAssets = cometWrapper.convertToAssets(bobShares);
-        uint256 bobAssetsWithdrawn = calculateAssetsToWithdrawFromShares(bobShares);
+        uint256 bobAssetsWithdrawn = cometWrapper.previewRedeem(bobShares);
         vm.expectEmit(true, true, true, true);
         emit Withdraw(bob, bob, bob, bobAssetsWithdrawn, bobShares);
         vm.prank(bob);
