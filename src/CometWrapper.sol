@@ -54,11 +54,12 @@ contract CometWrapper is ERC4626, CometHelpers {
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
         if (assets == 0) revert ZeroAssets();
 
-        accrueInternal(receiver);
-        int104 prevPrincipal = comet.userBasic(address(this)).principal;
         asset.safeTransferFrom(msg.sender, address(this), assets);
-        uint256 shares = unsigned256(comet.userBasic(address(this)).principal - prevPrincipal);
+
+        accrueInternal(receiver);
+        uint256 shares = previewDeposit(assets);
         if (shares == 0) revert ZeroShares();
+
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
@@ -331,7 +332,14 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param assets The amount of assets to deposit
     /// @return The total amount of shares that would be minted by the deposit
     function previewDeposit(uint256 assets) public view override returns (uint256) {
-        return convertToShares(assets);
+        // Calculate shares to mint by calculating the new principal amount
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        uint256 currentPrincipal = totalSupply;
+        uint256 newBalance = totalAssets() + assets;
+        // Round down so accounting is in the wrapper's favor
+        uint104 newPrincipal = principalValueSupply(baseSupplyIndex_, newBalance, Rounding.DOWN);
+        uint256 shares = newPrincipal - currentPrincipal;
+        return shares;
     }
 
     /// @notice Allows an on-chain or off-chain user to simulate the effects of their mint at the current block, given

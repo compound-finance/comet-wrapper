@@ -105,10 +105,14 @@ contract CometWrapperTest is BaseTest, CometMath {
         uint256 aliceActualSharesReceived = cometWrapper.deposit(5_000e6, alice);
         vm.stopPrank();
 
+        // Alice loses 1 gwei of the underlying due to Comet rounding during transfers
         assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance - 5_000e6, 1);
+        assertLe(comet.balanceOf(alice), aliceCometBalance - 5_000e6);
         assertEq(cometWrapper.balanceOf(alice), alicePreviewedSharesReceived);
         assertEq(alicePreviewedSharesReceived, aliceActualSharesReceived);
-        assertEq(alicePreviewedSharesReceived, aliceConvertToShares);
+        // previewDeposit should be <= convertToShares to account
+        // for "slippage" that occurs during integer math rounding
+        assertLe(alicePreviewedSharesReceived, aliceConvertToShares);
 
         assertEq(cometWrapper.balanceOf(bob), 0);
 
@@ -121,12 +125,14 @@ contract CometWrapperTest is BaseTest, CometMath {
         uint256 bobActualSharesReceived = cometWrapper.deposit(5_000e6, bob);
         vm.stopPrank();
 
+        // Bob loses 1 gwei of the underlying due to Comet rounding during transfers
         assertApproxEqAbs(comet.balanceOf(bob), bobCometBalance - 5_000e6, 1);
-        // TODO: investigate rounding
-        assertApproxEqAbs(cometWrapper.balanceOf(bob), bobPreviewedSharesReceived, 1);
-        assertApproxEqAbs(bobPreviewedSharesReceived, bobActualSharesReceived, 1);
-        assertGe(bobPreviewedSharesReceived, bobActualSharesReceived);
-        assertEq(bobPreviewedSharesReceived, bobConvertToShares);
+        assertLe(comet.balanceOf(bob), bobCometBalance - 5_000e6);
+        assertEq(cometWrapper.balanceOf(bob), bobPreviewedSharesReceived);
+        assertEq(bobPreviewedSharesReceived, bobActualSharesReceived);
+        // previewDeposit should be <= convertToShares to account
+        // for "slippage" that occurs during integer math rounding
+        assertLe(bobPreviewedSharesReceived, bobConvertToShares);
     }
 
     function test_previewMint() public {
@@ -895,3 +901,4 @@ contract CometWrapperTest is BaseTest, CometMath {
 
 // TODO: add fuzz testing
 // TODO: add tests for cWETHv3 decimals
+// TODO: add tests for max withdraw/redeem
