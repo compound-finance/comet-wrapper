@@ -44,42 +44,46 @@ contract CometWrapper is ERC4626, CometHelpers {
     function totalAssets() public view override returns (uint256) {
         uint64 baseSupplyIndex_ = accruedSupplyIndex();
         uint256 supply = totalSupply;
-        return supply > 0 ? presentValueSupply(baseSupplyIndex_, supply) : 0;
+        return supply > 0 ? presentValueSupply(baseSupplyIndex_, supply, Rounding.DOWN) : 0;
     }
 
     /// @notice Deposits assets into the vault and gets shares (Wrapped Comet token) in return
     /// @param assets The amount of assets to be deposited by the caller
     /// @param receiver The recipient address of the minted shares
-    /// @return shares The amount of shares that are minted to the receiver
-    function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
+    /// @return The amount of shares that are minted to the receiver
+    function deposit(uint256 assets, address receiver) public override returns (uint256) {
+        if (assets == 0) revert ZeroAssets();
+
+        accrueInternal(receiver);
+        int104 prevPrincipal = comet.userBasic(address(this)).principal;
+        asset.safeTransferFrom(msg.sender, address(this), assets);
+        uint256 shares = unsigned256(comet.userBasic(address(this)).principal - prevPrincipal);
+        if (shares == 0) revert ZeroShares();
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+
+        return shares;
+    }
+
+    /// @notice Mints shares (Wrapped Comet) in exchange for Comet tokens
+    /// @param shares The amount of shares to be minted for the receive
+    /// @param receiver The recipient address of the minted shares
+    /// @return The amount of assets that are deposited by the caller
+    function mint(uint256 shares, address receiver) public override returns (uint256) {
+        if (shares == 0) revert ZeroShares();
+        uint256 assets = convertToAssets(shares);
         if (assets == 0) revert ZeroAssets();
 
         accrueInternal(receiver);
         int104 prevPrincipal = comet.userBasic(address(this)).principal;
         asset.safeTransferFrom(msg.sender, address(this), assets);
         shares = unsigned256(comet.userBasic(address(this)).principal - prevPrincipal);
-        if (shares == 0) revert ZeroShares();
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
-    }
 
-    /// @notice Mints shares (Wrapped Comet) in exchange for Comet tokens
-    /// @param shares The amount of shares to be minted for the receive
-    /// @param receiver The recipient address of the minted shares
-    /// @return assets The amount of assets that are deposited by the caller
-    function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
-        if (shares == 0) revert ZeroShares();
-        assets = convertToAssets(shares);
-        if (assets == 0) revert ZeroAssets();
-
-        accrueInternal(receiver);
-        int104 prevPrincipal = comet.userBasic(address(this)).principal;
-        asset.safeTransferFrom(msg.sender, address(this), assets);
-        shares =  unsigned256(comet.userBasic(address(this)).principal - prevPrincipal);
-        _mint(receiver, shares);
-
-        emit Deposit(msg.sender, receiver, assets, shares);
+        return assets;
     }
 
     /// @notice Withdraws assets (Comet) from the vault and burns corresponding shares (Wrapped Comet).
@@ -87,61 +91,56 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param assets The amount of assets to be withdrawn by the caller
     /// @param receiver The recipient address of the withdrawn assets
     /// @param owner The owner of the assets to be withdrawn
-    /// @return shares The amount of shares of the owner that are burned
-    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256 shares) {
+    /// @return The amount of shares of the owner that are burned
+    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
         if (assets == 0) revert ZeroAssets();
+
+        accrueInternal(owner);
+        uint256 shares = previewWithdraw(assets);
+        if (shares == 0) revert ZeroShares();
+
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender];
-            shares = convertToShares(assets);
             if (allowed < shares) revert InsufficientAllowance();
-            // TODO: Move this to after shares is recomputed
             if (allowed != type(uint256).max) {
                 allowance[owner][msg.sender] = allowed - shares;
             }
         }
 
-        accrueInternal(owner);
-        int104 prevPrincipal = comet.userBasic(address(this)).principal;
-        asset.safeTransfer(receiver, assets);
-        shares =  unsigned256(prevPrincipal - comet.userBasic(address(this)).principal);
-        if (shares == 0) revert ZeroShares();
         _burn(owner, shares);
+        asset.safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        return shares;
     }
 
     /// @notice Redeems shares (Wrapped Comet) in exchange for assets (Wrapped Comet).
-    /// Caller can only withdraw assets from owner if they have been given allowance to.
+    /// Caller can only redeem shares from owner if they have been given allowance to.
     /// @param shares The amount of shares to be redeemed
     /// @param receiver The recipient address of the withdrawn assets
     /// @param owner The owner of the shares to be redeemed
-    /// @return assets The amount of assets that is withdrawn and sent to the receiver
-    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256 assets) {
+    /// @return The amount of assets that is withdrawn and sent to the receiver
+    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
         if (shares == 0) revert ZeroShares();
         if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals
+            uint256 allowed = allowance[owner][msg.sender];
             if (allowed < shares) revert InsufficientAllowance();
             if (allowed != type(uint256).max) {
                 allowance[owner][msg.sender] = allowed - shares;
             }
         }
-        // Asset transfers in Comet may lead to decrease of this contract's principal/shares by 1 more than the
-        // `shares` argument. Taking into account this quirk in Comet's transfer logic, we always decrease `shares`
-        // by 1 before converting to assets and doing the transfer. We then proceed to burn the actual `shares` amount
-        // that was decreased during the Comet transfer.
-        // In this way, any rounding error would be in favor of CometWrapper and CometWrapper will be protected
-        // from insolvency due to lack of assets that can be withdrawn by users.
-        assets = convertToAssets(shares-1);
-        if (assets == 0) revert ZeroAssets();
 
         accrueInternal(owner);
-        int104 prevPrincipal = comet.userBasic(address(this)).principal;
-        asset.safeTransfer(receiver, assets);
-        shares =  unsigned256(prevPrincipal - comet.userBasic(address(this)).principal);
-        if (shares == 0) revert ZeroShares();
+        uint256 assets = previewRedeem(shares);
+        if (assets == 0) revert ZeroAssets();
+
         _burn(owner, shares);
+        asset.safeTransfer(receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        return assets;
     }
 
     /// @notice Transfer shares from caller to the recipient
@@ -192,7 +191,7 @@ contract CometWrapper is ERC4626, CometHelpers {
     function underlyingBalance(address account) public view returns (uint256) {
         uint64 baseSupplyIndex_ = accruedSupplyIndex();
         uint256 principal = balanceOf[account];
-        return principal > 0 ? presentValueSupply(baseSupplyIndex_, principal) : 0;
+        return principal > 0 ? presentValueSupply(baseSupplyIndex_, principal, Rounding.DOWN) : 0;
     }
 
     /// @dev Updates an account's `baseTrackingAccrued` which keeps track of rewards accrued by the account.
@@ -315,8 +314,7 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param shares The amount of shares to be converted to assets
     /// @return The total amount of assets computed from the given shares
     function convertToAssets(uint256 shares) public view override returns (uint256) {
-        uint64 baseSupplyIndex_ = accruedSupplyIndex();
-        return shares > 0 ? presentValueSupply(baseSupplyIndex_, shares) : 0;
+        return convertToAssetsInternal(shares, Rounding.DOWN);
     }
 
     /// @notice Returns the amount of shares that the Vault would exchange for the amount of assets provided, in an ideal
@@ -325,23 +323,61 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param assets The amount of assets to be converted to shares
     /// @return The total amount of shares computed from the given assets
     function convertToShares(uint256 assets) public view override returns (uint256) {
-        uint64 baseSupplyIndex_ = accruedSupplyIndex();
-        return assets > 0 ? principalValueSupply(baseSupplyIndex_, assets) : 0;
+        return convertToSharesInternal(assets, Rounding.DOWN);
+    }
+
+    /// @notice Allows an on-chain or off-chain user to simulate the effects of their deposit at the current block, given
+    /// current on-chain conditions.
+    /// @param assets The amount of assets to deposit
+    /// @return The total amount of shares that would be minted by the deposit
+    function previewDeposit(uint256 assets) public view override returns (uint256) {
+        return convertToShares(assets);
     }
 
     /// @notice Allows an on-chain or off-chain user to simulate the effects of their mint at the current block, given
     /// current on-chain conditions.
-    /// @param shares The amount of shares to be converted to assets
+    /// @param shares The amount of shares to mint
     /// @return The total amount of assets required to mint the given shares
     function previewMint(uint256 shares) public view override returns (uint256) {
-        return convertToAssets(shares);
+        // Round up so the wrapper does not take a loss
+        return convertToAssetsInternal(shares, Rounding.UP);
     }
 
     /// @notice Allows an on-chain or off-chain user to simulate the effects of their withdrawal at the current block,
     /// given current on-chain conditions.
-    /// @param assets The amount of assets to be converted to shares
+    /// @param assets The amount of assets to withdraw
     /// @return The total amount of shares required to withdraw the given assets
     function previewWithdraw(uint256 assets) public view override returns (uint256) {
-        return convertToShares(assets);
+        // Calculate the quantity of shares to burn by calculating the new principal amount
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        uint256 currentPrincipal = totalSupply;
+        uint256 newBalance = totalAssets() - assets;
+        // Round down so accounting is in the wrapper's favor
+        uint104 newPrincipal = principalValueSupply(baseSupplyIndex_, newBalance, Rounding.DOWN);
+        return currentPrincipal - newPrincipal;
+    }
+
+    /// @notice Allows an on-chain or off-chain user to simulate the effects of their redemption at the current block,
+    /// given current on-chain conditions.
+    /// @param shares The amount of shares to redeem
+    /// @return The total amount of assets that would be withdrawn by the redemption
+    function previewRedeem(uint256 shares) public view override returns (uint256) {
+        // Back out the quantity of assets to withdraw in order to decrement principal by `shares`
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        uint256 currentPrincipal = totalSupply;
+        uint256 newPrincipal = currentPrincipal - shares;
+        // Round up so accounting is in the wrapper's favor
+        uint256 newBalance = presentValueSupply(baseSupplyIndex_, newPrincipal, Rounding.UP);
+        return totalAssets() - newBalance;
+    }
+
+    function convertToAssetsInternal(uint256 shares, Rounding rounding) internal view returns (uint256) {
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        return shares > 0 ? presentValueSupply(baseSupplyIndex_, shares, rounding) : 0;
+    }
+
+    function convertToSharesInternal(uint256 assets, Rounding rounding) internal view returns (uint256) {
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        return assets > 0 ? principalValueSupply(baseSupplyIndex_, assets, rounding) : 0;
     }
 }
