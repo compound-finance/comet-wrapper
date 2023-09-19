@@ -354,8 +354,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         uint256 newBalance = totalAssets() - assets;
         // Round down so accounting is in the wrapper's favor
         uint104 newPrincipal = principalValueSupply(baseSupplyIndex_, newBalance, Rounding.DOWN);
-        uint256 shares = currentPrincipal - newPrincipal;
-        return shares;
+        return currentPrincipal - newPrincipal;
     }
 
     /// @notice Allows an on-chain or off-chain user to simulate the effects of their redemption at the current block,
@@ -369,8 +368,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         uint256 newPrincipal = currentPrincipal - shares;
         // Round up so accounting is in the wrapper's favor
         uint256 newBalance = presentValueSupply(baseSupplyIndex_, newPrincipal, Rounding.UP);
-        uint256 assets = totalAssets() - newBalance;
-        return assets;
+        return totalAssets() - newBalance;
     }
 
     function convertToAssetsInternal(uint256 shares, Rounding rounding) internal view returns (uint256) {
