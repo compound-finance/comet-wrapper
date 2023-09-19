@@ -298,12 +298,23 @@ contract CometWrapperTest is BaseTest, CometMath {
         assertLt(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
     }
 
-    function test_deposit() public {
+    function test_deposit(uint256 amount1, uint256 amount2) public {
+        vm.assume(amount1 <= 2**48);
+        vm.assume(amount2 <= 2**48);
+        vm.assume(amount1 + amount2 < comet.balanceOf(cusdcHolder) - 100e6); // to account for borrowMin
+        vm.assume(amount1 > 100e6 && amount2 > 100e6);
+
+        vm.prank(cusdcHolder);
+        comet.transfer(alice, amount1);
+
+        vm.prank(cusdcHolder);
+        comet.transfer(bob, amount2);
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         vm.expectEmit(true, true, true, true);
-        emit Deposit(alice, alice, 5_000e6, cometWrapper.convertToShares(5_000e6));
-        cometWrapper.deposit(5_000e6, alice);
+        emit Deposit(alice, alice, amount1, cometWrapper.previewDeposit(amount1));
+        cometWrapper.deposit(amount1, alice);
         vm.stopPrank();
 
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
@@ -313,8 +324,8 @@ contract CometWrapperTest is BaseTest, CometMath {
         vm.startPrank(bob);
         comet.allow(wrapperAddress, true);
         vm.expectEmit(true, true, true, true);
-        emit Deposit(bob, bob, 7_777e6, cometWrapper.convertToShares(7_777e6));
-        cometWrapper.deposit(7_777e6, bob);
+        emit Deposit(bob, bob, amount2, cometWrapper.previewDeposit(amount2));
+        cometWrapper.deposit(amount2, bob);
         vm.stopPrank();
 
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
@@ -902,6 +913,6 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 }
 
-// TODO: add fuzz testing
+// TODO: add fuzz testing for withdraw
 // TODO: add tests for cWETHv3 decimals
 // TODO: add tests for max withdraw/redeem
