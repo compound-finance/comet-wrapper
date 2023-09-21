@@ -266,20 +266,10 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param account The address to whose rewards we want to accrue
     /// @return The UserBasic struct with updated baseTrackingIndex and/or baseTrackingAccrued fields
     function accrueRewards(address account) public returns (UserBasic memory) {
-        UserBasic memory basic = userBasic[account];
-        uint256 principal = balanceOf[account];
         comet.accrueAccount(address(this));
-        (, uint64 trackingSupplyIndex,) = getSupplyIndices();
-
-        if (principal >= 0) {
-            uint256 indexDelta = uint256(trackingSupplyIndex - basic.baseTrackingIndex);
-            basic.baseTrackingAccrued +=
-                safe64((principal * indexDelta) / trackingIndexScale / accrualDescaleFactor);
-        }
-        basic.baseTrackingIndex = trackingSupplyIndex;
-        userBasic[account] = basic;
-
-        return basic;
+        updateTrackingIndex(account);
+        // TODO: can optimize by having updateTrackingIndex return it
+        return userBasic[account];
     }
 
     /// @dev This returns latest baseSupplyIndex regardless of whether comet.accrueAccount has been called for the
