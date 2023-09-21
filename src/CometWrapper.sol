@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {CometInterface, TotalsBasic} from "./vendor/CometInterface.sol";
-import {CometHelpers} from "./CometHelpers.sol";
-import {ICometRewards} from "./vendor/ICometRewards.sol";
+import { ERC4626 } from "solmate/mixins/ERC4626.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import { CometInterface, TotalsBasic } from "./vendor/CometInterface.sol";
+import { CometHelpers } from "./CometHelpers.sol";
+import { ICometRewards } from "./vendor/ICometRewards.sol";
 
 /// @notice A vault contract that accepts deposits of a Comet token like cUSDCv3 as an asset
 /// and mints shares which are the Wrapped Comet token.
@@ -175,9 +175,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         updateTrackingIndex(to);
 
         balanceOf[from] -= amount;
-        unchecked {
-            balanceOf[to] += amount;
-        }
+        balanceOf[to] += amount;
 
         emit Transfer(from, to, amount);
     }
@@ -202,7 +200,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         uint256 principal = balanceOf[account];
         (, uint64 trackingSupplyIndex,) = getSupplyIndices();
 
-        if (principal >= 0) {
+        if (principal > 0) {
             uint256 indexDelta = uint256(trackingSupplyIndex - basic.baseTrackingIndex);
             basic.baseTrackingAccrued +=
                 safe64(principal * indexDelta / trackingIndexScale / accrualDescaleFactor);
