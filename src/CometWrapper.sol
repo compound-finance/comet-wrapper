@@ -57,6 +57,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         accrueInternal(receiver);
+        // uint256 shares = previewDepositInternal(assets, comet.totalsBasic().baseSupplyIndex);
         uint256 shares = previewDeposit(assets);
         if (shares == 0) revert ZeroShares();
 
@@ -132,7 +133,9 @@ contract CometWrapper is ERC4626, CometHelpers {
         }
 
         accrueInternal(owner);
+        // TODO:
         uint256 assets = previewRedeem(shares);
+        // uint256 assets = previewRedeemInternal(shares, comet.totalsBasic().baseSupplyIndex);
         if (assets == 0) revert ZeroAssets();
 
         _burn(owner, shares);
@@ -257,6 +260,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         }
     }
 
+    // TODO: Add more tests for rewards
     /// @notice Accrues rewards for the account
     /// @dev Latest trackingSupplyIndex is fetched from Comet so we can compute accurate rewards.
     /// This mirrors the logic for rewards accrual in CometRewards so we properly account for users'
@@ -270,14 +274,18 @@ contract CometWrapper is ERC4626, CometHelpers {
         return userBasic[account];
     }
 
+    // TODO:
     /// @dev This returns latest baseSupplyIndex regardless of whether comet.accrueAccount has been called for the
     /// current block. This works like `Comet.accruedInterestedIndices` at but not including computation of
     /// `baseBorrowIndex` since we do not need that index in CometWrapper:
     /// https://github.com/compound-finance/comet/blob/63e98e5d231ef50c755a9489eb346a561fc7663c/contracts/Comet.sol#L383-L394
     function accruedSupplyIndex() internal view returns (uint64) {
+        // comet.accrueAccount(address(this)); // TODO: Cannot call because of view, might not be able to do anything about this
         (uint64 baseSupplyIndex_,,uint40 lastAccrualTime) = getSupplyIndices();
         uint256 timeElapsed = uint256(getNowInternal() - lastAccrualTime);
         if (timeElapsed > 0) {
+            // TODO: so many cross contract calls, very gassy...
+            // For non-view functions, can just call accrue and then grab the supply index
             uint256 utilization = comet.getUtilization();
             uint256 supplyRate = comet.getSupplyRate(utilization);
             baseSupplyIndex_ += safe64(mulFactor(baseSupplyIndex_, supplyRate * timeElapsed));
@@ -321,10 +329,14 @@ contract CometWrapper is ERC4626, CometHelpers {
     function previewDeposit(uint256 assets) public view override returns (uint256) {
         // Calculate shares to mint by calculating the new principal amount
         uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        return previewDepositInternal(assets, baseSupplyIndex_);
+    }
+
+    function previewDepositInternal(uint256 assets, uint64 baseSupplyIndex) private view returns (uint256) {
         uint256 currentPrincipal = totalSupply;
         uint256 newBalance = totalAssets() + assets;
         // Round down so accounting is in the wrapper's favor
-        uint104 newPrincipal = principalValueSupply(baseSupplyIndex_, newBalance, Rounding.DOWN);
+        uint104 newPrincipal = principalValueSupply(baseSupplyIndex, newBalance, Rounding.DOWN);
         uint256 shares = newPrincipal - currentPrincipal;
         return shares;
     }
@@ -365,10 +377,14 @@ contract CometWrapper is ERC4626, CometHelpers {
     function previewRedeem(uint256 shares) public view override returns (uint256) {
         // Back out the quantity of assets to withdraw in order to decrement principal by `shares`
         uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        return previewRedeemInternal(shares, baseSupplyIndex_);
+    }
+
+    function previewRedeemInternal(uint256 shares, uint64 baseSupplyIndex) private view returns (uint256) {
         uint256 currentPrincipal = totalSupply;
         uint256 newPrincipal = currentPrincipal - shares;
         // Round up so accounting is in the wrapper's favor
-        uint256 newBalance = presentValueSupply(baseSupplyIndex_, newPrincipal, Rounding.UP);
+        uint256 newBalance = presentValueSupply(baseSupplyIndex, newPrincipal, Rounding.UP);
         return totalAssets() - newBalance;
     }
 

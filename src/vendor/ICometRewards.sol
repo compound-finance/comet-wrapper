@@ -2,10 +2,15 @@
 pragma solidity 0.8.17;
 
 interface ICometRewards {
+    // TODO: how to deal with multiplier?
     struct RewardConfig {
         address token;
         uint64 rescaleFactor;
         bool shouldUpscale;
+        // Note: We define new variables after existing variables to keep interface backwards-compatible
+        // uint256 multiplier;
+        // Note: maybe just document the fact that currently, none of the rewards markets use multipliers.
+        // but need to be careful about future markets (unlikely though)
     }
 
     struct RewardOwed {
