@@ -16,9 +16,10 @@ contract CometHelpers is CometMath {
     }
 
     error InsufficientAllowance();
+    error TimestampTooLarge();
+    error UninitializedReward();
     error ZeroShares();
     error ZeroAddress();
-    error TimestampTooLarge();
 
     event RewardClaimed(address indexed src, address indexed recipient, address indexed token, uint256 amount);
 
