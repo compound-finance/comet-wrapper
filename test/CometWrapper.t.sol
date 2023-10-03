@@ -784,17 +784,18 @@ contract CometWrapperTest is BaseTest, CometMath {
         cometWrapper.redeem(900e6, bob, alice);
     }
 
-    // TODO: can remove? is there a need for these checks?
-    // TODO: maybe to prevent 0 shares minting non-zero values? add fuzz tests to verify this can't happen
-    function test_revertsOnZeroSharesOrAssets() public {
+    function test_revertsOnZeroShares() public {
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
         vm.expectRevert(CometHelpers.ZeroShares.selector);
         cometWrapper.mint(0, alice);
         vm.expectRevert(CometHelpers.ZeroShares.selector);
         cometWrapper.redeem(0, alice, alice);
-        vm.expectRevert(CometHelpers.ZeroAssets.selector);
+        vm.expectRevert(CometHelpers.ZeroShares.selector);
         cometWrapper.withdraw(0, alice, alice);
-        vm.expectRevert(CometHelpers.ZeroAssets.selector);
+        vm.expectRevert(CometHelpers.ZeroShares.selector);
         cometWrapper.deposit(0, alice);
+        vm.stopPrank();
     }
 
     function test_transfer() public {
