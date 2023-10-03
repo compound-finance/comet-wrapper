@@ -245,9 +245,9 @@ contract CometWrapper is ERC4626, CometHelpers {
 
         if (owed != 0) {
             rewardsClaimed[from] += owed;
-            emit RewardClaimed(from, to, config.token, owed);
             cometRewards.claimTo(address(comet), address(this), address(this), true);
             ERC20(config.token).safeTransfer(to, owed);
+            emit RewardClaimed(from, to, config.token, owed);
         }
     }
 
