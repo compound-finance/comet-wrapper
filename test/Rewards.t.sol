@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {BaseTest} from "./BaseTest.sol";
-import {Deployable, ICometConfigurator, ICometProxyAdmin} from "../src/vendor/ICometConfigurator.sol";
+import { BaseTest } from "./BaseTest.sol";
+import { CometWrapper, ICometRewards, CometHelpers, ERC20 } from "../src/CometWrapper.sol";
+import { Deployable, ICometConfigurator, ICometProxyAdmin } from "../src/vendor/ICometConfigurator.sol";
 import "forge-std/console.sol";
 
 contract RewardsTest is BaseTest {
@@ -57,6 +58,19 @@ contract RewardsTest is BaseTest {
             cometRewards.getRewardOwed(cometAddress, wrapperAddress).owed,
             cometWrapper.getRewardOwed(bob) + cometWrapper.getRewardOwed(alice)
         );
+    }
+
+    function test_getRewardOwed_revertsOnUninitializedReward() public {
+        // Set up new reward contract with uninitialized reward token
+        bytes memory code = address(cometRewards).code;
+        address newRewardsAddr = makeAddr("newRewards");
+        vm.etch(newRewardsAddr, code);
+
+        CometWrapper newCometWrapper =
+            new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "Net Comet Wrapper", "NewWcUSDCv3");
+
+        vm.expectRevert(CometHelpers.UninitializedReward.selector);
+        newCometWrapper.getRewardOwed(alice);
     }
 
     function test_claimTo(uint256 aliceAmount, uint256 bobAmount) public {
@@ -129,6 +143,20 @@ contract RewardsTest is BaseTest {
         vm.stopPrank();
 
         assertEq(wrapperRewards, rewardsFromComet);
+    }
+
+    function test_getClaimTo_revertsOnUninitializedReward() public {
+        // Set up new reward contract with uninitialized reward token
+        bytes memory code = address(cometRewards).code;
+        address newRewardsAddr = makeAddr("newRewards");
+        vm.etch(newRewardsAddr, code);
+
+        CometWrapper newCometWrapper =
+            new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "Net Comet Wrapper", "NewWcUSDCv3");
+
+        vm.prank(alice);
+        vm.expectRevert(CometHelpers.UninitializedReward.selector);
+        newCometWrapper.claimTo(alice);
     }
 
     function test_accrueRewards(uint256 aliceAmount) public {
@@ -255,5 +283,4 @@ contract RewardsTest is BaseTest {
 
 // TODO: test cWETHv3
 // TODO: test L2 reward contracts that use multipliers
-// TODO: claimTo on behalf of someone else
 // TODO: multiple reward contracts?

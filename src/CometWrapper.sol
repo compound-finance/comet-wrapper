@@ -152,7 +152,7 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param amount The amount of shares to be transferred
     /// @return bool Indicates success of the transfer
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
-        uint256 allowed = msg.sender == from ? type(uint256).max : allowance[from][msg.sender]; // Saves gas for limited approvals.
+        uint256 allowed = msg.sender == from ? type(uint256).max : allowance[from][msg.sender];
         if (allowed < amount) revert InsufficientAllowance();
         if (allowed != type(uint256).max) {
             allowance[from][msg.sender] = allowed - amount;
@@ -220,6 +220,8 @@ contract CometWrapper is ERC4626, CometHelpers {
     }
 
     function getRewardOwedInternal(ICometRewards.RewardConfig memory config, address account) internal returns (uint256) {
+        if (config.token == address(0)) revert UninitializedReward();
+
         UserBasic memory basic = accrueRewards(account);
         uint256 claimed = rewardsClaimed[account];
         uint256 accrued = basic.baseTrackingAccrued;

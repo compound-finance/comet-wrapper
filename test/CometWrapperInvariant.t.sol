@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {BaseTest, CometHelpers, CometWrapper, ERC20, ICometRewards} from "./BaseTest.sol";
-import {CometMath} from "../src/vendor/CometMath.sol";
+import { BaseTest, CometHelpers, CometWrapper, ERC20, ICometRewards } from "./BaseTest.sol";
+import { CometMath } from "../src/vendor/CometMath.sol";
 
 contract CometWrapperInvariantTest is BaseTest, CometMath {
     // Invariants:
