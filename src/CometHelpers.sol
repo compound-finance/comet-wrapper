@@ -17,7 +17,6 @@ contract CometHelpers is CometMath {
 
     error InsufficientAllowance();
     error ZeroShares();
-    error ZeroAssets();
     error ZeroAddress();
     error TimestampTooLarge();
 

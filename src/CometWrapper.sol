@@ -52,8 +52,6 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param receiver The recipient address of the minted shares
     /// @return The amount of shares that are minted to the receiver
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
-        if (assets == 0) revert ZeroAssets();
-
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         accrueInternal(receiver);
@@ -76,7 +74,6 @@ contract CometWrapper is ERC4626, CometHelpers {
 
         accrueInternal(receiver);
         uint256 assets = previewMint(shares);
-        if (assets == 0) revert ZeroAssets();
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
         _mint(receiver, shares);
@@ -93,8 +90,6 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param owner The owner of the assets to be withdrawn
     /// @return The amount of shares of the owner that are burned
     function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
-        if (assets == 0) revert ZeroAssets();
-
         accrueInternal(owner);
         uint256 shares = previewWithdraw(assets);
         if (shares == 0) revert ZeroShares();
@@ -133,7 +128,6 @@ contract CometWrapper is ERC4626, CometHelpers {
 
         accrueInternal(owner);
         uint256 assets = previewRedeem(shares);
-        if (assets == 0) revert ZeroAssets();
 
         _burn(owner, shares);
         asset.safeTransfer(receiver, assets);
