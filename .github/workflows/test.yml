@@ -32,4 +32,5 @@ jobs:
           forge test -vvv
         env:
           MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
         id: test
