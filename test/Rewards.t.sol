@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { BaseTest } from "./BaseTest.sol";
+import { CoreTest } from "./CoreTest.sol";
 import { CometWrapper, ICometRewards, CometHelpers, ERC20 } from "../src/CometWrapper.sol";
 import { Deployable, ICometConfigurator, ICometProxyAdmin } from "../src/vendor/ICometConfigurator.sol";
 import "forge-std/console.sol";
 
-contract RewardsTest is BaseTest {
-    address constant configuratorAddress = 0x316f9708bB98af7dA9c68C1C3b5e79039cD336E3;
-    address constant proxyAdminAddress = 0x1EC63B5883C3481134FD50D5DAebc83Ecd2E8779;
-
+abstract contract RewardsTest is CoreTest {
     function test_getRewardOwed(uint256 aliceAmount, uint256 bobAmount) public {
         /* ===== Setup ===== */
 
@@ -19,6 +16,10 @@ contract RewardsTest is BaseTest {
         vm.assume(aliceAmount >= 2e6 && bobAmount >= 2e6);
 
         enableRewardsAccrual();
+
+        // Make amount an even number so it can be divided equally by 2
+        if (aliceAmount % 2 != 0) aliceAmount -= 1;
+        if (bobAmount % 2 != 0) bobAmount -= 1;
 
         // Alice and Bob have same amount of funds in both CometWrapper and Comet
         vm.startPrank(cusdcHolder);
@@ -35,6 +36,19 @@ contract RewardsTest is BaseTest {
         comet.allow(wrapperAddress, true);
         cometWrapper.deposit(bobAmount / 2, bob);
         vm.stopPrank();
+
+        // Make sure that Alice and Bob have the same amount of shares in Comet and the CometWrapper
+        // We do this because `comet.transfer` can burn 1 extra principal from the sender
+        uint256 diffInShares = cometWrapper.balanceOf(alice) - uint256(int256(comet.userBasic(alice).principal));
+        if (diffInShares > 0) {
+            vm.prank(alice);
+            cometWrapper.redeem(diffInShares, address(0), alice);
+        }
+        diffInShares = cometWrapper.balanceOf(bob) - uint256(int256(comet.userBasic(bob).principal));
+        if (diffInShares > 0) {
+            vm.prank(bob);
+            cometWrapper.redeem(diffInShares, address(0), bob);
+        }
 
         /* ===== Start test ===== */
 

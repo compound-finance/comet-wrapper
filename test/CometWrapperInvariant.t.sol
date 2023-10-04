@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { BaseTest, CometHelpers, CometWrapper, ERC20, ICometRewards } from "./BaseTest.sol";
+import { CoreTest, CometHelpers, CometWrapper, ERC20, ICometRewards } from "./CoreTest.sol";
 import { CometMath } from "../src/vendor/CometMath.sol";
 
-contract CometWrapperInvariantTest is BaseTest, CometMath {
+abstract contract CometWrapperInvariantTest is CoreTest, CometMath {
     // Invariants:
     // - totalAssets must always be <= comet.balanceOf(address(cometWrapper))
     // - sum of all underlyingBalances of accounts <= totalAssets
@@ -187,3 +187,5 @@ contract CometWrapperInvariantTest is BaseTest, CometMath {
         }
     }
 }
+
+// TODO: add invariant testing
