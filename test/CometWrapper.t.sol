@@ -48,7 +48,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
 
     function test_constructor_revertsOnInvalidCometRewards() public {
         // reverts on zero address
-        vm.expectRevert(CometHelpers.ZeroAddress.selector);
+        vm.expectRevert(CometWrapper.ZeroAddress.selector);
         new CometWrapper(ERC20(address(comet)), ICometRewards(address(0)), "Name", "Symbol");
 
         // reverts on non-zero address that isn't CometRewards
@@ -533,7 +533,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertEq(cometWrapper.balanceOf(alice), 5_000e6 - sharesToWithdraw);
 
         // Reverts if trying to withdraw again now that allowance is used up
-        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
         cometWrapper.withdraw(assetsToWithdraw, bob, alice);
         vm.stopPrank();
         assertEq(cometWrapper.allowance(alice, bob), sharesToApprove - sharesToWithdraw);
@@ -558,7 +558,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         vm.stopPrank();
 
         vm.prank(bob);
-        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
         cometWrapper.withdraw(900e6, bob, alice);
     }
 
@@ -786,7 +786,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertApproxEqAbs(cometWrapper.balanceOf(alice), 5_000e6 - sharesToWithdraw, 1);
 
         // Reverts if trying to redeem again now that allowance is used up
-        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
         cometWrapper.redeem(sharesToWithdraw, bob, alice);
         vm.stopPrank();
         assertEq(cometWrapper.allowance(alice, bob), sharesToApprove - sharesToWithdraw);
@@ -811,20 +811,20 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         vm.stopPrank();
 
         vm.prank(bob);
-        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
         cometWrapper.redeem(900e6, bob, alice);
     }
 
     function test_revertsOnZeroShares() public {
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
-        vm.expectRevert(CometHelpers.ZeroShares.selector);
+        vm.expectRevert(CometWrapper.ZeroShares.selector);
         cometWrapper.mint(0, alice);
-        vm.expectRevert(CometHelpers.ZeroShares.selector);
+        vm.expectRevert(CometWrapper.ZeroShares.selector);
         cometWrapper.redeem(0, alice, alice);
-        vm.expectRevert(CometHelpers.ZeroShares.selector);
+        vm.expectRevert(CometWrapper.ZeroShares.selector);
         cometWrapper.withdraw(0, alice, alice);
-        vm.expectRevert(CometHelpers.ZeroShares.selector);
+        vm.expectRevert(CometWrapper.ZeroShares.selector);
         cometWrapper.deposit(0, alice);
         vm.stopPrank();
     }
@@ -892,7 +892,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
 
         // Need approvals to transferFrom alice to bob
         vm.prank(bob);
-        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
         cometWrapper.transferFrom(alice, bob, 5_000e6);
 
         vm.prank(alice);
@@ -906,7 +906,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertEq(cometWrapper.balanceOf(bob), 2_500e6);
 
         // Reverts if trying to transferFrom again now that allowance is used up
-        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
         cometWrapper.transferFrom(alice, bob, 2_500e6);
         vm.stopPrank();
         assertEq(cometWrapper.allowance(alice, bob), 200e6);
@@ -931,19 +931,19 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         vm.stopPrank();
 
         vm.prank(bob);
-        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
         cometWrapper.transferFrom(alice, bob, 900e6);
 
         vm.prank(alice);
         cometWrapper.approve(bob, 500e6);
 
         vm.startPrank(bob);
-        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
         cometWrapper.transferFrom(alice, bob, 800e6); // larger than allowance
 
         cometWrapper.transferFrom(alice, bob, 400e6); // less than allowance
 
-        vm.expectRevert(CometHelpers.InsufficientAllowance.selector);
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
         cometWrapper.transferFrom(alice, bob, 200e6); // larger than remaining allowance
 
         assertEq(cometWrapper.balanceOf(bob), 400e6);

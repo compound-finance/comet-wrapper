@@ -39,6 +39,19 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @notice Factor to divide by when accruing rewards in order to preserve 6 decimals (i.e. baseScale / 1e6)
     uint256 internal immutable accrualDescaleFactor;
 
+    /** Custom errors **/
+
+    error InsufficientAllowance();
+    error TimestampTooLarge();
+    error UninitializedReward();
+    error ZeroShares();
+    error ZeroAddress();
+
+    /** Custom events **/
+
+    /// @notice Event emitted when a reward is claimed for a user
+    event RewardClaimed(address indexed src, address indexed recipient, address indexed token, uint256 amount);
+
     /**
      * @notice Construct a new Comet Wrapper instance
      * @param comet_ The Comet token to wrap
@@ -450,5 +463,14 @@ contract CometWrapper is ERC4626, CometHelpers {
      */
     function maxWithdraw(address owner) public view override returns (uint256) {
         return previewRedeem(balanceOf[owner]);
+    }
+
+    /**
+     * @dev The current timestamp
+     * From https://github.com/compound-finance/comet/blob/main/contracts/Comet.sol#L375-L378
+     */
+    function getNowInternal() internal view virtual returns (uint40) {
+        if (block.timestamp >= 2**40) revert TimestampTooLarge();
+        return uint40(block.timestamp);
     }
 }

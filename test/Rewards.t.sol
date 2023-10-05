@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 import { CoreTest } from "./CoreTest.sol";
 import { CometWrapper, ICometRewards, CometHelpers, ERC20 } from "../src/CometWrapper.sol";
 import { Deployable, ICometConfigurator, ICometProxyAdmin } from "../src/vendor/ICometConfigurator.sol";
-import "forge-std/console.sol";
 
 abstract contract RewardsTest is CoreTest {
     function test_getRewardOwed(uint256 aliceAmount, uint256 bobAmount) public {
@@ -83,7 +82,7 @@ abstract contract RewardsTest is CoreTest {
         CometWrapper newCometWrapper =
             new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "Net Comet Wrapper", "NewWcUSDCv3");
 
-        vm.expectRevert(CometHelpers.UninitializedReward.selector);
+        vm.expectRevert(CometWrapper.UninitializedReward.selector);
         newCometWrapper.getRewardOwed(alice);
     }
 
@@ -169,7 +168,7 @@ abstract contract RewardsTest is CoreTest {
             new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "Net Comet Wrapper", "NewWcUSDCv3");
 
         vm.prank(alice);
-        vm.expectRevert(CometHelpers.UninitializedReward.selector);
+        vm.expectRevert(CometWrapper.UninitializedReward.selector);
         newCometWrapper.claimTo(alice);
     }
 
