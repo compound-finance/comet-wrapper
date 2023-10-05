@@ -8,8 +8,11 @@ import { CometInterface, TotalsBasic } from "./vendor/CometInterface.sol";
 import { CometHelpers } from "./CometHelpers.sol";
 import { ICometRewards } from "./vendor/ICometRewards.sol";
 
-/// @notice A vault contract that accepts deposits of a Comet token like cUSDCv3 as an asset
-/// and mints shares which are the Wrapped Comet token.
+/**
+ * @title Comet Wrapper
+ * @notice Wrapper contract that adds ERC4626 and ERC7246 support to the rebasing Comet token (e.g. cUSDCv3)
+ * @author Compound & gjaldon
+ */
 contract CometWrapper is ERC4626, CometHelpers {
     using SafeTransferLib for ERC20;
 
@@ -18,12 +21,22 @@ contract CometWrapper is ERC4626, CometHelpers {
         uint64 baseTrackingIndex;
     }
 
+    /// @notice Mapping of users to basic data
     mapping(address => UserBasic) public userBasic;
+
+    /// @notice Mapping of users to their rewards claimed
     mapping(address => uint256) public rewardsClaimed;
 
+    /// @notice The Comet address which this contract wraps
     CometInterface public immutable comet;
+
+    /// @notice The CometRewards address that this contract can claim rewards from
     ICometRewards public immutable cometRewards;
+
+    /// @notice The scale for reward tracking
     uint256 public immutable trackingIndexScale;
+
+    /// @notice Factor to divide by when accruing rewards in order to preserve 6 decimals (i.e. baseScale / 1e6)
     uint256 internal immutable accrualDescaleFactor;
 
     /**
@@ -32,7 +45,7 @@ contract CometWrapper is ERC4626, CometHelpers {
      * @param cometRewards_ The rewards contract for the Comet market
      * @param name_ The wrapper token name
      * @param symbol_ The wrapper token symbol
-     **/
+     */
     constructor(ERC20 comet_, ICometRewards cometRewards_, string memory name_, string memory symbol_)
         ERC4626(comet_, name_, symbol_)
     {
@@ -169,6 +182,8 @@ contract CometWrapper is ERC4626, CometHelpers {
         return true;
     }
 
+    /// @dev Update the balances of the addresses involved in a token transfer. Before the balances are updated,
+    /// interest is first accrued and tracking indices are updated.
     function transferInternal(address from, address to, uint256 amount) internal {
         // Accrue rewards before transferring assets
         comet.accrueAccount(address(this));
@@ -210,6 +225,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         userBasic[account] = basic;
     }
 
+    /// @dev Update the interest accrued to the wrapper and the tracking index for an account
     function accrueInternal(address account) internal {
         comet.accrueAccount(address(this));
         updateTrackingIndex(account);
@@ -226,6 +242,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         return getRewardOwedInternal(config, account);
     }
 
+    /// @dev Mimics the reward owed calculation in CometRewards to arrive at the reward owed to a user of the wrapper
     function getRewardOwedInternal(ICometRewards.RewardConfig memory config, address account) internal returns (uint256) {
         if (config.token == address(0)) revert UninitializedReward();
 
@@ -272,7 +289,6 @@ contract CometWrapper is ERC4626, CometHelpers {
     function accrueRewards(address account) public returns (UserBasic memory) {
         comet.accrueAccount(address(this));
         updateTrackingIndex(account);
-        // TODO: can optimize by having updateTrackingIndex return it
         return userBasic[account];
     }
 
