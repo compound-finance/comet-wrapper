@@ -368,6 +368,14 @@ contract CometWrapper is ERC4626, CometHelpers {
         return totalAssets() - newBalance;
     }
 
+    /// @notice Maximum amount of the underlying asset that can be withdrawn from the owner balance in the Vault,
+    /// through a withdraw call.
+    /// @param owner The owner of the assets to be withdrawn
+    /// @return The total amount of assets that could be withdrawn
+    function maxWithdraw(address owner) public view override returns (uint256) {
+        return previewRedeem(balanceOf[owner]);
+    }
+
     function convertToAssetsInternal(uint256 shares, Rounding rounding) internal view returns (uint256) {
         uint64 baseSupplyIndex_ = accruedSupplyIndex();
         return shares > 0 ? presentValueSupply(baseSupplyIndex_, shares, rounding) : 0;
