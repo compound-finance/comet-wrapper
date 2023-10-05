@@ -5,26 +5,6 @@ import { Test } from "forge-std/Test.sol";
 import { CometWrapper, CometInterface, ICometRewards, CometHelpers, ERC20 } from "../src/CometWrapper.sol";
 
 abstract contract CoreTest is Test {
-    // "comet": "0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf",
-    // "configurator": "0x45939657d1CA34A8FA39A924B71D28Fe8431e581",
-    // "rewards": "0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1",
-    // "bridgeReceiver": "0x18281dfC4d00905DA1aaA6731414EABa843c468A",
-    // "l2CrossDomainMessenger": "0x4200000000000000000000000000000000000007",
-    // "l2StandardBridge": "0x4200000000000000000000000000000000000010",
-    // "bulker": "0x78D0677032A35c63D142a48A2037048871212a8C"
-    // address constant cometAddress = 0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf;
-    // address constant rewardAddress = 0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1;
-    // address constant compAddress = 0x9e1028F5F1D5eDE59748FFceE5532509976840E0;
-    // address constant usdcHolder = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
-    // address constant usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    // address constant cusdcHolder = 0xBaC3100BEEE79CA34B18fbcD0437bd382Ee5611B;
-    // address cometAddress;
-    // address rewardAddress;
-    // address compAddress;
-    // address usdcHolder;
-    // address usdcAddress;
-    // address cusdcHolder;
-
     function NETWORK() external virtual returns (string calldata);
     function FORK_BLOCK_NUMBER() external virtual returns (uint256);
 
@@ -59,7 +39,6 @@ abstract contract CoreTest is Test {
     function setUp() public virtual {
         vm.label(alice, "alice");
         vm.label(bob, "bob");
-        // vm.createSelectFork(vm.rpcUrl("base"), 4791144);
         vm.createSelectFork(vm.rpcUrl(this.NETWORK()), this.FORK_BLOCK_NUMBER());
 
         cometAddress = this.COMET_ADDRESS();
