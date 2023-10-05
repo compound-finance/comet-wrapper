@@ -10,7 +10,7 @@ import { ICometRewards } from "./vendor/ICometRewards.sol";
 
 /**
  * @title Comet Wrapper
- * @notice Wrapper contract that adds ERC4626 and ERC7246 support to the rebasing Comet token (e.g. cUSDCv3)
+ * @notice Wrapper contract that adds ERC4626 and ERC7246 functionality to the rebasing Comet token (e.g. cUSDCv3)
  * @author Compound & gjaldon
  */
 contract CometWrapper is ERC4626, CometHelpers {
