@@ -27,7 +27,7 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @notice Mapping of users to their rewards claimed
     mapping(address => uint256) public rewardsClaimed;
 
-    /// @notice The Comet address which this contract wraps
+    /// @notice The Comet address that this contract wraps
     CometInterface public immutable comet;
 
     /// @notice The CometRewards address that this contract can claim rewards from
@@ -290,7 +290,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         uint256 accrued = basic.baseTrackingAccrued;
 
         // Note: Newer CometRewards contracts (those deployed on L2s) store a multiplier and use it during the reward calculation.
-        // As of 10/05/2023, all the multipliers are currently set to 1e18, so this following code is still compatible. This contract
+        // As of 10/05/2023, all the multipliers are currently set to 1e18, so the following code is still compatible. This contract
         // will need to properly handle the multiplier if there is ever a rewards contract that sets it to some other value.
         if (config.shouldUpscale) {
             accrued *= config.rescaleFactor;
