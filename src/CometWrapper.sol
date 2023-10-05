@@ -26,15 +26,22 @@ contract CometWrapper is ERC4626, CometHelpers {
     uint256 public immutable trackingIndexScale;
     uint256 internal immutable accrualDescaleFactor;
 
-    constructor(ERC20 _asset, ICometRewards _cometRewards, string memory _name, string memory _symbol)
-        ERC4626(_asset, _name, _symbol)
+    /**
+     * @notice Construct a new Comet Wrapper instance
+     * @param comet_ The Comet token to wrap
+     * @param cometRewards_ The rewards contract for the Comet market
+     * @param name_ The wrapper token name
+     * @param symbol_ The wrapper token symbol
+     **/
+    constructor(ERC20 comet_, ICometRewards cometRewards_, string memory name_, string memory symbol_)
+        ERC4626(comet_, name_, symbol_)
     {
-        if (address(_cometRewards) == address(0)) revert ZeroAddress();
+        if (address(cometRewards_) == address(0)) revert ZeroAddress();
         // minimal validation that contract is CometRewards
-        _cometRewards.rewardConfig(address(_asset));
+        cometRewards_.rewardConfig(address(comet_));
 
-        comet = CometInterface(address(_asset));
-        cometRewards = _cometRewards;
+        comet = CometInterface(address(comet_));
+        cometRewards = cometRewards_;
         trackingIndexScale = comet.trackingIndexScale();
         accrualDescaleFactor = uint64(10 ** asset.decimals()) / BASE_ACCRUAL_SCALE;
     }
@@ -226,6 +233,9 @@ contract CometWrapper is ERC4626, CometHelpers {
         uint256 claimed = rewardsClaimed[account];
         uint256 accrued = basic.baseTrackingAccrued;
 
+        // Note: Newer CometRewards contracts (those deployed on L2s) store a multiplier and use it during the reward calculation.
+        // As of 10/05/2023, all the multipliers are currently set to 1e18, so this following code is still compatible. This contract
+        // will need to properly handle the multiplier if there is ever a rewards contract that sets it to some other value.
         if (config.shouldUpscale) {
             accrued *= config.rescaleFactor;
         } else {
@@ -298,7 +308,8 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param shares The amount of shares to be converted to assets
     /// @return The total amount of assets computed from the given shares
     function convertToAssets(uint256 shares) public view override returns (uint256) {
-        return convertToAssetsInternal(shares, Rounding.DOWN);
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        return shares > 0 ? presentValueSupply(baseSupplyIndex_, shares, Rounding.DOWN) : 0;
     }
 
     /// @notice Returns the amount of shares that the Vault would exchange for the amount of assets provided, in an ideal
@@ -307,7 +318,8 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @param assets The amount of assets to be converted to shares
     /// @return The total amount of shares computed from the given assets
     function convertToShares(uint256 assets) public view override returns (uint256) {
-        return convertToSharesInternal(assets, Rounding.DOWN);
+        uint64 baseSupplyIndex_ = accruedSupplyIndex();
+        return assets > 0 ? principalValueSupply(baseSupplyIndex_, assets, Rounding.DOWN) : 0;
     }
 
     /// @notice Allows an on-chain or off-chain user to simulate the effects of their deposit at the current block, given
@@ -374,15 +386,5 @@ contract CometWrapper is ERC4626, CometHelpers {
     /// @return The total amount of assets that could be withdrawn
     function maxWithdraw(address owner) public view override returns (uint256) {
         return previewRedeem(balanceOf[owner]);
-    }
-
-    function convertToAssetsInternal(uint256 shares, Rounding rounding) internal view returns (uint256) {
-        uint64 baseSupplyIndex_ = accruedSupplyIndex();
-        return shares > 0 ? presentValueSupply(baseSupplyIndex_, shares, rounding) : 0;
-    }
-
-    function convertToSharesInternal(uint256 assets, Rounding rounding) internal view returns (uint256) {
-        uint64 baseSupplyIndex_ = accruedSupplyIndex();
-        return assets > 0 ? principalValueSupply(baseSupplyIndex_, assets, rounding) : 0;
     }
 }

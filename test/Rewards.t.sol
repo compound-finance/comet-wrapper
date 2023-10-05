@@ -296,5 +296,3 @@ abstract contract RewardsTest is CoreTest {
 }
 
 // TODO: test cWETHv3
-// TODO: test L2 reward contracts that use multipliers
-// TODO: multiple reward contracts?
