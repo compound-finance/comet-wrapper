@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { BaseTest, CometHelpers, CometWrapper, ERC20, ICometRewards } from "./BaseTest.sol";
+import { CoreTest, CometHelpers, CometWrapper, ERC20, ICometRewards } from "./CoreTest.sol";
 import { CometMath } from "../src/vendor/CometMath.sol";
 
-contract CometWrapperTest is BaseTest, CometMath {
+abstract contract CometWrapperTest is CoreTest, CometMath {
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event Withdraw(address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares);
     event Transfer(address indexed from, address indexed to, uint256 amount);
     event Approval(address indexed owner, address indexed spender, uint256 amount);
 
-    function setUp() public override {
-        super.setUp();
-
+    function setUpAliceAndBobCometBalances() public {
         vm.prank(cusdcHolder);
         comet.transfer(alice, 10_000e6);
         assertGt(comet.balanceOf(alice), 9999e6);
@@ -59,6 +57,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_totalAssets() public {
+        setUpAliceAndBobCometBalances();
+
         assertEq(cometWrapper.totalAssets(), 0);
 
         vm.startPrank(alice);
@@ -81,6 +81,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_underlyingBalance() public {
+        setUpAliceAndBobCometBalances();
+
         assertEq(cometWrapper.underlyingBalance(alice), 0);
 
         vm.startPrank(alice);
@@ -94,6 +96,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_previewDeposit() public {
+        setUpAliceAndBobCometBalances();
+
         assertEq(cometWrapper.balanceOf(alice), 0);
 
         uint256 aliceCometBalance = comet.balanceOf(alice);
@@ -136,6 +140,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_previewMint() public {
+        setUpAliceAndBobCometBalances();
+
         assertEq(cometWrapper.balanceOf(alice), 0);
 
         uint256 aliceCometBalance = comet.balanceOf(alice);
@@ -180,6 +186,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_previewWithdraw() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.deposit(5_000e6, alice);
@@ -230,6 +238,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_previewRedeem() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.mint(5_000e6, alice);
@@ -280,6 +290,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_nullifyInflationAttacks() public {
+        setUpAliceAndBobCometBalances();
+
         assertEq(cometWrapper.totalAssets(), 0);
 
         vm.startPrank(alice);
@@ -299,6 +311,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_deposit(uint256 amount1, uint256 amount2) public {
+        setUpAliceAndBobCometBalances();
+
         vm.assume(amount1 <= 2**48);
         vm.assume(amount2 <= 2**48);
         vm.assume(amount1 + amount2 < comet.balanceOf(cusdcHolder) - 100e6); // to account for borrowMin
@@ -335,6 +349,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_depositTo() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         vm.expectEmit(true, true, true, true);
@@ -360,6 +376,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_withdraw() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.deposit(9_101e6, alice);
@@ -420,6 +438,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_withdrawTo() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.deposit(9_101e6, alice);
@@ -454,6 +474,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_withdrawFrom() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.deposit(9_101e6, alice);
@@ -493,6 +515,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_withdrawUsesAllowances() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.mint(5_000e6, alice);
@@ -536,6 +560,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_withdraw_revertsOnInsufficientAllowance() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.deposit(1_000e6, alice);
@@ -547,6 +573,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_mint(uint256 amount1, uint256 amount2) public {
+        setUpAliceAndBobCometBalances();
+
         vm.assume(amount1 <= 2**48);
         vm.assume(amount2 <= 2**48);
         vm.assume(amount1 + amount2 < comet.balanceOf(cusdcHolder) - 100e6); // to account for borrowMin
@@ -590,6 +618,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_mintTo() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         vm.expectEmit(true, true, true, true);
@@ -603,6 +633,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_redeem(uint256 amount1, uint256 amount2) public {
+        setUpAliceAndBobCometBalances();
+
         vm.assume(amount1 <= 2**48);
         vm.assume(amount2 <= 2**48);
         vm.assume(amount1 + amount2 < comet.balanceOf(cusdcHolder) - 100e6); // to account for borrowMin
@@ -657,6 +689,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_redeemTo() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.deposit(8_098e6, alice);
@@ -694,6 +728,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_redeemFrom() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.deposit(8_098e6, alice);
@@ -734,6 +770,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_redeemUsesAllowances() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.mint(5_000e6, alice);
@@ -774,6 +812,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_redeem_revertsOnInsufficientAllowance() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.mint(1_000e6, alice);
@@ -799,6 +839,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_transfer() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.mint(9_000e6, alice);
@@ -836,6 +878,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_transferFromWorksForSender() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.mint(5_000e6, alice);
@@ -849,6 +893,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_transferFromUsesAllowances() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.mint(5_000e6, alice);
@@ -887,6 +933,8 @@ contract CometWrapperTest is BaseTest, CometMath {
     }
 
     function test_transferFrom_revertsOnInsufficientAllowance() public {
+        setUpAliceAndBobCometBalances();
+
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.mint(1_000e6, alice);
