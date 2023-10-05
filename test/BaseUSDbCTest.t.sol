@@ -7,7 +7,7 @@ import { CometWrapperTest } from "./CometWrapper.t.sol";
 import { CometWrapperInvariantTest } from "./CometWrapperInvariant.t.sol";
 import { RewardsTest } from "./Rewards.t.sol";
 
-contract BaseTest is CometWrapperTest, CometWrapperInvariantTest, RewardsTest {
+contract BaseUSDbCTest is CometWrapperTest, CometWrapperInvariantTest, RewardsTest {
     string public override NETWORK = "base";
     uint256 public override FORK_BLOCK_NUMBER = 4791144;
 
@@ -16,7 +16,7 @@ contract BaseTest is CometWrapperTest, CometWrapperInvariantTest, RewardsTest {
     address public override CONFIGURATOR_ADDRESS = 0x45939657d1CA34A8FA39A924B71D28Fe8431e581;
     address public override PROXY_ADMIN_ADDRESS = 0xbdE8F31D2DdDA895264e27DD990faB3DC87b372d;
     address public override COMP_ADDRESS = 0x9e1028F5F1D5eDE59748FFceE5532509976840E0;
-    address public override USDC_ADDRESS = 0x4c80E24119CFB836cdF0a6b53dc23F04F7e652CA;
-    address public override USDC_HOLDER = 0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA;
+    address public override USDC_ADDRESS = 0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA;
+    address public override USDC_HOLDER = 0x4c80E24119CFB836cdF0a6b53dc23F04F7e652CA;
     address public override CUSDC_HOLDER = 0xBaC3100BEEE79CA34B18fbcD0437bd382Ee5611B;
 }

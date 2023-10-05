@@ -32,6 +32,7 @@ abstract contract CoreTest is Test {
     ERC20 public usdc;
     ERC20 public comp;
     address public wrapperAddress;
+    uint256 public decimalScale;
 
     address alice = address(0xABCD);
     address bob = address(0xDCBA);
@@ -57,5 +58,44 @@ abstract contract CoreTest is Test {
         cometWrapper =
             new CometWrapper(ERC20(this.cometAddress()), ICometRewards(this.rewardAddress()), "Wrapped Comet USDC", "WcUSDCv3");
         wrapperAddress = address(cometWrapper);
+        decimalScale = 10 ** usdc.decimals();
+    }
+
+    function setUpFuzzTestAssumptions(uint256 amount) public view returns (uint256) {
+        string memory underlyingSymbol = usdc.symbol();
+        uint256 minBorrow;
+        if (isEqual(underlyingSymbol, "USDC") || isEqual(underlyingSymbol, "USDbC")) {
+            minBorrow = 100 * decimalScale;
+        } else if (isEqual(underlyingSymbol, "WETH")) {
+            minBorrow = decimalScale / 10; // 0.1 WETH
+        } else {
+            revert("Unsupported underlying asset");
+        }
+
+        amount = bound(amount, minBorrow, comet.balanceOf(cusdcHolder) - minBorrow);
+        return amount;
+    }
+
+    function setUpFuzzTestAssumptions(uint256 amount1, uint256 amount2) public view returns (uint256, uint256) {
+        string memory underlyingSymbol = usdc.symbol();
+        uint256 minBorrow;
+        if (isEqual(underlyingSymbol, "USDC") || isEqual(underlyingSymbol, "USDbC")) {
+            minBorrow = 100 * decimalScale;
+            amount1 = bound(amount1, minBorrow, 2**48);
+            amount2 = bound(amount2, minBorrow, 2**48);
+        } else if (isEqual(underlyingSymbol, "WETH")) {
+            minBorrow = decimalScale / 10; // 0.1 WETH
+            amount1 = bound(amount1, minBorrow, 2**88);
+            amount2 = bound(amount2, minBorrow, 2**88);
+        } else {
+            revert("Unsupported underlying asset");
+        }
+
+        vm.assume(amount1 + amount2 < comet.balanceOf(cusdcHolder) - minBorrow); // to account for borrowMin
+        return (amount1, amount2);
+    }
+
+    function isEqual(string memory s1, string memory s2) internal pure returns (bool) {
+        return keccak256(abi.encodePacked(s1)) == keccak256(abi.encodePacked(s2));
     }
 }

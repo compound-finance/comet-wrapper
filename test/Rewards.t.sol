@@ -9,10 +9,7 @@ abstract contract RewardsTest is CoreTest {
     function test_getRewardOwed(uint256 aliceAmount, uint256 bobAmount) public {
         /* ===== Setup ===== */
 
-        vm.assume(aliceAmount <= 2**48);
-        vm.assume(bobAmount <= 2**48);
-        vm.assume(aliceAmount + bobAmount < comet.balanceOf(cusdcHolder) - 100e6); // to account for borrowMin
-        vm.assume(aliceAmount >= 2e6 && bobAmount >= 2e6);
+        (aliceAmount, bobAmount) = setUpFuzzTestAssumptions(aliceAmount, bobAmount);
 
         enableRewardsAccrual();
 
@@ -89,10 +86,7 @@ abstract contract RewardsTest is CoreTest {
     function test_claimTo(uint256 aliceAmount, uint256 bobAmount) public {
         /* ===== Setup ===== */
 
-        vm.assume(aliceAmount <= 2**48);
-        vm.assume(bobAmount <= 2**48);
-        vm.assume(aliceAmount + bobAmount < comet.balanceOf(cusdcHolder) - 100e6); // to account for borrowMin
-        vm.assume(aliceAmount >= 2e6 && bobAmount >= 2e6);
+        (aliceAmount, bobAmount) = setUpFuzzTestAssumptions(aliceAmount, bobAmount);
 
         enableRewardsAccrual();
         // Make sure CometRewards has ample COMP to claim
@@ -165,7 +159,7 @@ abstract contract RewardsTest is CoreTest {
         vm.etch(newRewardsAddr, code);
 
         CometWrapper newCometWrapper =
-            new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "Net Comet Wrapper", "NewWcUSDCv3");
+            new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "New Comet Wrapper", "NewWcUSDCv3");
 
         vm.prank(alice);
         vm.expectRevert(CometWrapper.UninitializedReward.selector);
@@ -175,9 +169,7 @@ abstract contract RewardsTest is CoreTest {
     function test_accrueRewards(uint256 aliceAmount) public {
         /* ===== Setup ===== */
 
-        vm.assume(aliceAmount <= 2**48);
-        vm.assume(aliceAmount < comet.balanceOf(cusdcHolder) - 100e6); // to account for borrowMin
-        vm.assume(aliceAmount >= 2e6);
+        aliceAmount = setUpFuzzTestAssumptions(aliceAmount);
 
         enableRewardsAccrual();
 
