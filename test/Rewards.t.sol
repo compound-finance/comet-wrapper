@@ -18,7 +18,7 @@ abstract contract RewardsTest is CoreTest {
         if (bobAmount % 2 != 0) bobAmount -= 1;
 
         // Alice and Bob have same amount of funds in both CometWrapper and Comet
-        vm.startPrank(cusdcHolder);
+        vm.startPrank(cometHolder);
         comet.transfer(alice, aliceAmount);
         comet.transfer(bob, bobAmount);
         vm.stopPrank();
@@ -77,7 +77,7 @@ abstract contract RewardsTest is CoreTest {
         vm.etch(newRewardsAddr, code);
 
         CometWrapper newCometWrapper =
-            new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "Net Comet Wrapper", "NewWcUSDCv3");
+            new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "New Comet Wrapper", "NewWcUNDERLYINGv3");
 
         vm.expectRevert(CometWrapper.UninitializedReward.selector);
         newCometWrapper.getRewardOwed(alice);
@@ -96,7 +96,7 @@ abstract contract RewardsTest is CoreTest {
         if (aliceAmount % 2 != 0) aliceAmount -= 1;
         if (bobAmount % 2 != 0) bobAmount -= 1;
 
-        vm.startPrank(cusdcHolder);
+        vm.startPrank(cometHolder);
         comet.transfer(alice, aliceAmount);
         comet.transfer(bob, bobAmount);
         vm.stopPrank();
@@ -159,7 +159,7 @@ abstract contract RewardsTest is CoreTest {
         vm.etch(newRewardsAddr, code);
 
         CometWrapper newCometWrapper =
-            new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "New Comet Wrapper", "NewWcUSDCv3");
+            new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "New Comet Wrapper", "NewWcUNDERLYINGv3");
 
         vm.prank(alice);
         vm.expectRevert(CometWrapper.UninitializedReward.selector);
@@ -176,7 +176,7 @@ abstract contract RewardsTest is CoreTest {
         // Make amount an even number so it can be divided equally by 2
         if (aliceAmount % 2 != 0) aliceAmount -= 1;
 
-        vm.startPrank(cusdcHolder);
+        vm.startPrank(cometHolder);
         comet.transfer(alice, aliceAmount);
         vm.stopPrank();
 
@@ -215,7 +215,7 @@ abstract contract RewardsTest is CoreTest {
         vm.prank(alice);
         cometWrapper.transfer(bob, 5_000e6);
 
-        // Alice should have 30 days worth of accrued rewards for her 10K WcUSDC
+        // Alice should have 30 days worth of accrued rewards for her 10K WcUNDERLYING
         assertEq(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed);
         // Bob should have no rewards accrued yet since his balance prior to the transfer was 0
         assertEq(cometWrapper.getRewardOwed(bob), 0);
@@ -228,7 +228,7 @@ abstract contract RewardsTest is CoreTest {
         vm.prank(alice);
         cometWrapper.redeem(5_000e6, alice, alice);
 
-        // Alice should have 30 days worth of accrued rewards for her 10K WcUSDC and not for 5K WcUSDC
+        // Alice should have 30 days worth of accrued rewards for her 10K WcUNDERLYING and not for 5K WcUNDERLYING
         assertEq(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed);
 
         vm.revertTo(snapshot);
@@ -239,7 +239,7 @@ abstract contract RewardsTest is CoreTest {
         vm.prank(alice);
         cometWrapper.withdraw(5_000e6, alice, alice);
 
-        // Alice should have 30 days worth of accrued rewards for her 10K WcUSDC and not for 5K WcUSDC
+        // Alice should have 30 days worth of accrued rewards for her 10K WcUNDERLYING and not for 5K WcUNDERLYING
         assertEq(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed);
 
         vm.revertTo(snapshot);
@@ -250,7 +250,7 @@ abstract contract RewardsTest is CoreTest {
         vm.prank(alice);
         cometWrapper.mint(5_000e6, alice);
 
-        // Alice should have 30 days worth of accrued rewards for her 10K WcUSDC and not for 5K WcUSDC
+        // Alice should have 30 days worth of accrued rewards for her 10K WcUNDERLYING and not for 5K WcUNDERLYING
         assertEq(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed);
 
         vm.revertTo(snapshot);
@@ -261,12 +261,12 @@ abstract contract RewardsTest is CoreTest {
         vm.prank(alice);
         cometWrapper.deposit(5_000e6, alice);
 
-        // Alice should have 30 days worth of accrued rewards for her 10K WcUSDC and not for 5K WcUSDC
+        // Alice should have 30 days worth of accrued rewards for her 10K WcUNDERLYING and not for 5K WcUNDERLYING
         assertEq(cometWrapper.getRewardOwed(alice), cometRewards.getRewardOwed(cometAddress, alice).owed);
     }
 
     function setupAliceBalance() internal {
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(alice, 20_000e6);
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);

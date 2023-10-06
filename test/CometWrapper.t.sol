@@ -11,10 +11,10 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
     event Approval(address indexed owner, address indexed spender, uint256 amount);
 
     function setUpAliceAndBobCometBalances() public {
-        deal(address(usdc), address(cusdcHolder), 20_000 * decimalScale);
-        vm.startPrank(cusdcHolder);
-        usdc.approve(address(comet), 20_000 * decimalScale);
-        comet.supply(address(usdc), 20_000 * decimalScale);
+        deal(address(underlyingToken), address(cometHolder), 20_000 * decimalScale);
+        vm.startPrank(cometHolder);
+        underlyingToken.approve(address(comet), 20_000 * decimalScale);
+        comet.supply(address(underlyingToken), 20_000 * decimalScale);
 
         comet.transfer(alice, 10_000 * decimalScale);
         assertGt(comet.balanceOf(alice), 9999 * decimalScale);
@@ -30,8 +30,8 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertEq(address(cometWrapper.cometRewards()), address(cometRewards));
         assertEq(address(cometWrapper.asset()), address(comet));
         assertEq(cometWrapper.decimals(), comet.decimals());
-        assertEq(cometWrapper.name(), "Wrapped Comet USDC");
-        assertEq(cometWrapper.symbol(), "WcUSDCv3");
+        assertEq(cometWrapper.name(), "Wrapped Comet UNDERLYING");
+        assertEq(cometWrapper.symbol(), "WcUNDERLYINGv3");
         assertEq(cometWrapper.totalSupply(), 0);
         assertEq(cometWrapper.totalAssets(), 0);
     }
@@ -47,7 +47,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
 
         // reverts on ERC20-only contract
         vm.expectRevert();
-        new CometWrapper(usdc, cometRewards, "Name", "Symbol");
+        new CometWrapper(underlyingToken, cometRewards, "Name", "Symbol");
     }
 
     function test_constructor_revertsOnInvalidCometRewards() public {
@@ -321,10 +321,10 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
 
         (amount1, amount2) = setUpFuzzTestAssumptions(amount1, amount2);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(alice, amount1);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(bob, amount2);
 
         vm.startPrank(alice);
@@ -570,10 +570,10 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
 
         (amount1, amount2) = setUpFuzzTestAssumptions(amount1, amount2);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(alice, amount1);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(bob, amount2);
 
         uint256 aliceMintAmount = amount1 / 2;
@@ -628,10 +628,10 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
 
         (amount1, amount2) = setUpFuzzTestAssumptions(amount1, amount2);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(alice, amount1);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(bob, amount2);
 
         vm.startPrank(alice);

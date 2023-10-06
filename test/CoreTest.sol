@@ -13,23 +13,23 @@ abstract contract CoreTest is Test {
     function CONFIGURATOR_ADDRESS() external virtual returns (address);
     function PROXY_ADMIN_ADDRESS() external virtual returns (address);
     function COMP_ADDRESS() external virtual returns (address);
-    function USDC_ADDRESS() external virtual returns (address);
-    function USDC_HOLDER() external virtual returns (address);
-    function CUSDC_HOLDER() external virtual returns (address);
+    function UNDERLYING_TOKEN_ADDRESS() external virtual returns (address);
+    function UNDERLYING_TOKEN_HOLDER() external virtual returns (address);
+    function COMET_HOLDER() external virtual returns (address);
 
     address public cometAddress;
     address public rewardAddress;
     address public configuratorAddress;
     address public proxyAdminAddress;
     address public compAddress;
-    address public usdcHolder;
-    address public usdcAddress;
-    address public cusdcHolder;
+    address public underlyingTokenHolder;
+    address public underlyingTokenAddress;
+    address public cometHolder;
 
     CometWrapper public cometWrapper;
     CometInterface public comet;
     ICometRewards public cometRewards;
-    ERC20 public usdc;
+    ERC20 public underlyingToken;
     ERC20 public comp;
     address public wrapperAddress;
     uint256 public decimalScale;
@@ -47,22 +47,22 @@ abstract contract CoreTest is Test {
         configuratorAddress = this.CONFIGURATOR_ADDRESS();
         proxyAdminAddress = this.PROXY_ADMIN_ADDRESS();
         compAddress = this.COMP_ADDRESS();
-        usdcAddress = this.USDC_ADDRESS();
-        usdcHolder = this.USDC_HOLDER();
-        cusdcHolder = this.CUSDC_HOLDER();
+        underlyingTokenAddress = this.UNDERLYING_TOKEN_ADDRESS();
+        underlyingTokenHolder = this.UNDERLYING_TOKEN_HOLDER();
+        cometHolder = this.COMET_HOLDER();
 
-        usdc = ERC20(this.usdcAddress());
-        comp = ERC20(this.compAddress());
-        comet = CometInterface(this.cometAddress());
-        cometRewards = ICometRewards(this.rewardAddress());
+        underlyingToken = ERC20(underlyingTokenAddress);
+        comp = ERC20(compAddress);
+        comet = CometInterface(cometAddress);
+        cometRewards = ICometRewards(rewardAddress);
         cometWrapper =
-            new CometWrapper(ERC20(this.cometAddress()), ICometRewards(this.rewardAddress()), "Wrapped Comet USDC", "WcUSDCv3");
+            new CometWrapper(ERC20(cometAddress), ICometRewards(rewardAddress), "Wrapped Comet UNDERLYING", "WcUNDERLYINGv3");
         wrapperAddress = address(cometWrapper);
-        decimalScale = 10 ** usdc.decimals();
+        decimalScale = 10 ** underlyingToken.decimals();
     }
 
     function setUpFuzzTestAssumptions(uint256 amount) public view returns (uint256) {
-        string memory underlyingSymbol = usdc.symbol();
+        string memory underlyingSymbol = underlyingToken.symbol();
         uint256 minBorrow;
         if (isEqual(underlyingSymbol, "USDC") || isEqual(underlyingSymbol, "USDbC")) {
             minBorrow = 100 * decimalScale;
@@ -72,12 +72,12 @@ abstract contract CoreTest is Test {
             revert("Unsupported underlying asset");
         }
 
-        amount = bound(amount, minBorrow, comet.balanceOf(cusdcHolder) - minBorrow);
+        amount = bound(amount, minBorrow, comet.balanceOf(cometHolder) - minBorrow);
         return amount;
     }
 
     function setUpFuzzTestAssumptions(uint256 amount1, uint256 amount2) public view returns (uint256, uint256) {
-        string memory underlyingSymbol = usdc.symbol();
+        string memory underlyingSymbol = underlyingToken.symbol();
         uint256 minBorrow;
         if (isEqual(underlyingSymbol, "USDC") || isEqual(underlyingSymbol, "USDbC")) {
             minBorrow = 100 * decimalScale;
@@ -91,7 +91,7 @@ abstract contract CoreTest is Test {
             revert("Unsupported underlying asset");
         }
 
-        vm.assume(amount1 + amount2 < comet.balanceOf(cusdcHolder) - minBorrow); // to account for borrowMin
+        vm.assume(amount1 + amount2 < comet.balanceOf(cometHolder) - minBorrow); // to account for borrowMin
         return (amount1, amount2);
     }
 

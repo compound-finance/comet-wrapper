@@ -16,7 +16,7 @@ contract MainnetWETHTest is CometWrapperTest, CometWrapperInvariantTest, Rewards
     address public override CONFIGURATOR_ADDRESS = 0x316f9708bB98af7dA9c68C1C3b5e79039cD336E3;
     address public override PROXY_ADMIN_ADDRESS = 0x1EC63B5883C3481134FD50D5DAebc83Ecd2E8779;
     address public override COMP_ADDRESS = 0xc00e94Cb662C3520282E6f5717214004A7f26888;
-    address public override USDC_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // WETH
-    address public override USDC_HOLDER = 0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E; // WETH
-    address public override CUSDC_HOLDER = 0x10D88638Be3c26f3a47d861B8b5641508501035d; // cWETHv3
+    address public override UNDERLYING_TOKEN_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // WETH
+    address public override UNDERLYING_TOKEN_HOLDER = 0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E; // WETH
+    address public override COMET_HOLDER = 0x10D88638Be3c26f3a47d861B8b5641508501035d; // cWETHv3
 }

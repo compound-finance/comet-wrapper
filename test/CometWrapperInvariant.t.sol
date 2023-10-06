@@ -12,9 +12,9 @@ abstract contract CometWrapperInvariantTest is CoreTest, CometMath {
     function test_contractBalanceInvariants(uint256 amount1, uint256 amount2) public {
         (amount1, amount2) = setUpFuzzTestAssumptions(amount1, amount2);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(alice, amount1);
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(bob, amount2);
 
         uint256 aliceBalance = comet.balanceOf(alice);
@@ -81,7 +81,7 @@ abstract contract CometWrapperInvariantTest is CoreTest, CometMath {
     function test_redeemInvariants(uint256 amount1) public {
         amount1 = setUpFuzzTestAssumptions(amount1);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(alice, amount1);
 
         skip(30000 days);
@@ -133,9 +133,9 @@ abstract contract CometWrapperInvariantTest is CoreTest, CometMath {
     function test_transferInvariants(uint256 amount1, uint256 amount2) public {
         (amount1, amount2) = setUpFuzzTestAssumptions(amount1, amount2);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(alice, amount1);
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(bob, amount2);
 
         vm.startPrank(alice);

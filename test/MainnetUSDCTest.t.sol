@@ -16,7 +16,7 @@ contract MainnetUSDCTest is CometWrapperTest, CometWrapperInvariantTest, Rewards
     address public override CONFIGURATOR_ADDRESS = 0x316f9708bB98af7dA9c68C1C3b5e79039cD336E3;
     address public override PROXY_ADMIN_ADDRESS = 0x1EC63B5883C3481134FD50D5DAebc83Ecd2E8779;
     address public override COMP_ADDRESS = 0xc00e94Cb662C3520282E6f5717214004A7f26888;
-    address public override USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address public override USDC_HOLDER = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
-    address public override CUSDC_HOLDER = 0x638e9ad05DBd35B1c19dF3a4EAa0642A3B90A2AD;
+    address public override UNDERLYING_TOKEN_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public override UNDERLYING_TOKEN_HOLDER = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
+    address public override COMET_HOLDER = 0x638e9ad05DBd35B1c19dF3a4EAa0642A3B90A2AD;
 }
