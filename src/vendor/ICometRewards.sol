@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: ISC
-pragma solidity 0.8.17;
+pragma solidity 0.8.21;
 
 interface ICometRewards {
     struct RewardConfig {

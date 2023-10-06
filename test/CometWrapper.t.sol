@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity 0.8.21;
 
 import { CoreTest, CometHelpers, CometWrapper, ERC20, ICometRewards } from "./CoreTest.sol";
 import { CometMath } from "../src/vendor/CometMath.sol";
@@ -950,5 +950,4 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
 }
 
 // TODO: add fuzz testing for withdraw
-// TODO: add tests for cWETHv3 decimals
 // TODO: add tests for max withdraw/redeem
