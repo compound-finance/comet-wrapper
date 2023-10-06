@@ -94,7 +94,9 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         cometWrapper.deposit(5_000 * decimalScale, alice);
         vm.stopPrank();
 
+        // Rounds down underlying balance in favor of wrapper
         assertApproxEqAbs(cometWrapper.underlyingBalance(alice), 5_000 * decimalScale, 1);
+        assertLe(cometWrapper.underlyingBalance(alice), 5_000 * decimalScale);
         skip(14 days);
         assertGe(cometWrapper.underlyingBalance(alice), 5_000 * decimalScale);
     }
@@ -833,9 +835,9 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         cometWrapper.transferFrom(alice, bob, 1_337 * decimalScale);
         vm.stopPrank();
 
-        assertApproxEqAbs(cometWrapper.balanceOf(alice), 7_663 * decimalScale, 1);
-        assertApproxEqAbs(cometWrapper.balanceOf(bob), 1_337 * decimalScale, 1);
-        assertApproxEqAbs(cometWrapper.totalSupply(), 9_000 * decimalScale, 1);
+        assertEq(cometWrapper.balanceOf(alice), 7_663 * decimalScale);
+        assertEq(cometWrapper.balanceOf(bob), 1_337 * decimalScale);
+        assertEq(cometWrapper.totalSupply(), 9_000 * decimalScale);
 
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
         skip(30 days);
@@ -853,12 +855,12 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         cometWrapper.transfer(alice, 99 * decimalScale);
         vm.stopPrank();
 
-        assertApproxEqAbs(cometWrapper.balanceOf(alice), 7_663 * decimalScale + 777 * decimalScale + 111 * decimalScale + 99 * decimalScale, 1);
-        assertApproxEqAbs(cometWrapper.balanceOf(bob), 1_337 * decimalScale - 777 * decimalScale - 111 * decimalScale - 99 * decimalScale, 1);
+        assertEq(cometWrapper.balanceOf(alice), (7_663 + 777 + 111 + 99) * decimalScale);
+        assertEq(cometWrapper.balanceOf(bob), (1_337 - 777 - 111 - 99) * decimalScale);
 
         skip(30 days);
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
-        assertApproxEqAbs(cometWrapper.totalSupply(), 9_000 * decimalScale, 1);
+        assertEq(cometWrapper.totalSupply(), 9_000 * decimalScale);
         uint256 totalPrincipal = unsigned256(comet.userBasic(address(cometWrapper)).principal);
         assertEq(cometWrapper.totalSupply(), totalPrincipal);
     }
@@ -897,7 +899,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         // Allowances should be updated when transferFrom is done
         assertEq(cometWrapper.allowance(alice, bob), 2_700 * decimalScale);
         cometWrapper.transferFrom(alice, bob, 2_500 * decimalScale);
-        assertApproxEqAbs(cometWrapper.balanceOf(alice), 2_500 * decimalScale, 1);
+        assertEq(cometWrapper.balanceOf(alice), 2_500 * decimalScale);
         assertEq(cometWrapper.balanceOf(bob), 2_500 * decimalScale);
 
         // Reverts if trying to transferFrom again now that allowance is used up
