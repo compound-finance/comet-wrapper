@@ -10,14 +10,11 @@ abstract contract CometWrapperInvariantTest is CoreTest, CometMath {
     // - sum of all underlyingBalances of accounts <= totalAssets
     // - sum of user balances == cometWrapper's principal in comet
     function test_contractBalanceInvariants(uint256 amount1, uint256 amount2) public {
-        vm.assume(amount1 <= 2**48);
-        vm.assume(amount2 <= 2**48);
-        vm.assume(amount1 + amount2 < comet.balanceOf(cusdcHolder) - 100e6); // to account for borrowMin
-        vm.assume(amount1 > 100e6 && amount2 > 100e6);
+        (amount1, amount2) = setUpFuzzTestAssumptions(amount1, amount2);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(alice, amount1);
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(bob, amount2);
 
         uint256 aliceBalance = comet.balanceOf(alice);
@@ -82,11 +79,9 @@ abstract contract CometWrapperInvariantTest is CoreTest, CometMath {
     // Invariants:
     // - on redeem, decrease in wrapper's Comet principal == burnt user shares == change in total supply
     function test_redeemInvariants(uint256 amount1) public {
-        vm.assume(amount1 <= 2**48);
-        vm.assume(amount1 > 1000e6);
-        vm.assume(amount1 < comet.balanceOf(cusdcHolder) - 100e6); // to account for borrowMin
+        amount1 = setUpFuzzTestAssumptions(amount1);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(alice, amount1);
 
         skip(30000 days);
@@ -136,14 +131,11 @@ abstract contract CometWrapperInvariantTest is CoreTest, CometMath {
     // - transfers must not change totalSupply
     // - transfers must not change totalAssets
     function test_transferInvariants(uint256 amount1, uint256 amount2) public {
-        vm.assume(amount1 <= 2**48);
-        vm.assume(amount2 <= 2**48);
-        vm.assume(amount1 + amount2 < comet.balanceOf(cusdcHolder));
-        vm.assume(amount1 > 1000e6 && amount2 > 1000e6);
+        (amount1, amount2) = setUpFuzzTestAssumptions(amount1, amount2);
 
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(alice, amount1);
-        vm.prank(cusdcHolder);
+        vm.prank(cometHolder);
         comet.transfer(bob, amount2);
 
         vm.startPrank(alice);
