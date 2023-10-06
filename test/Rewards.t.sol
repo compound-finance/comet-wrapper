@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity 0.8.21;
 
 import { CoreTest } from "./CoreTest.sol";
 import { CometWrapper, ICometRewards, CometHelpers, ERC20 } from "../src/CometWrapper.sol";
@@ -285,5 +285,3 @@ abstract contract RewardsTest is CoreTest {
         vm.stopPrank();
     }
 }
-
-// TODO: test cWETHv3
