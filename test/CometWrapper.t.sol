@@ -295,6 +295,34 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertLe(bobPreviewedAssetsReceived, bobConvertToAssets);
     }
 
+    function test_maxWithdraw(uint256 amount) public {
+        setUpAliceAndBobCometBalances();
+
+        amount = setUpFuzzTestAssumptions(amount);
+
+        vm.startPrank(cometHolder);
+        comet.allow(wrapperAddress, true);
+        uint256 sharesMinted = cometWrapper.deposit(amount, alice);
+        vm.stopPrank();
+
+        assertEq(cometWrapper.maxWithdraw(alice), cometWrapper.previewRedeem(sharesMinted));
+        assertEq(cometWrapper.maxWithdraw(alice), cometWrapper.underlyingBalance(alice));
+    }
+
+    function test_maxRedeem(uint256 amount) public {
+        setUpAliceAndBobCometBalances();
+
+        amount = setUpFuzzTestAssumptions(amount);
+
+        vm.startPrank(cometHolder);
+        comet.allow(wrapperAddress, true);
+        uint256 sharesMinted = cometWrapper.deposit(amount, alice);
+        vm.stopPrank();
+
+        assertEq(cometWrapper.maxRedeem(alice), sharesMinted);
+        assertEq(cometWrapper.maxRedeem(alice), cometWrapper.balanceOf(alice));
+    }
+
     function test_nullifyInflationAttacks() public {
         setUpAliceAndBobCometBalances();
 
@@ -956,5 +984,3 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         vm.stopPrank();
     }
 }
-
-// TODO: add tests for max withdraw/redeem
