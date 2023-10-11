@@ -413,17 +413,8 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         aliceWithdrawAmount = bound(aliceWithdrawAmount, 0, amount1);
 
         vm.startPrank(cometHolder);
-        comet.transfer(alice, amount1);
-        comet.transfer(bob, amount2);
-        vm.stopPrank();
-
-        vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.deposit(amount1, alice);
-        vm.stopPrank();
-
-        vm.startPrank(bob);
-        comet.allow(wrapperAddress, true);
         cometWrapper.deposit(amount2, bob);
         vm.stopPrank();
 
@@ -664,19 +655,9 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
 
         (amount1, amount2) = setUpFuzzTestAssumptions(amount1, amount2);
 
-        vm.prank(cometHolder);
-        comet.transfer(alice, amount1);
-
-        vm.prank(cometHolder);
-        comet.transfer(bob, amount2);
-
-        vm.startPrank(alice);
+        vm.startPrank(cometHolder);
         comet.allow(wrapperAddress, true);
         cometWrapper.deposit(amount1, alice);
-        vm.stopPrank();
-
-        vm.startPrank(bob);
-        comet.allow(wrapperAddress, true);
         cometWrapper.deposit(amount2, bob);
         vm.stopPrank();
 
