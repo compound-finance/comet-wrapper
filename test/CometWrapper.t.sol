@@ -378,17 +378,25 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertLe(totalAssets, cometWrapper.totalAssets());
     }
 
-    function test_withdraw() public {
+    function test_withdraw(uint256 amount1, uint256 amount2, uint256 aliceWithdrawAmount) public {
         setUpAliceAndBobCometBalances();
+
+        (amount1, amount2) = setUpFuzzTestAssumptions(amount1, amount2);
+        aliceWithdrawAmount = bound(aliceWithdrawAmount, 0, amount1);
+
+        vm.startPrank(cometHolder);
+        comet.transfer(alice, amount1);
+        comet.transfer(bob, amount2);
+        vm.stopPrank();
 
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
-        cometWrapper.deposit(9_101 * decimalScale, alice);
+        cometWrapper.deposit(amount1, alice);
         vm.stopPrank();
 
         vm.startPrank(bob);
         comet.allow(wrapperAddress, true);
-        cometWrapper.deposit(2_555 * decimalScale, bob);
+        cometWrapper.deposit(amount2, bob);
         vm.stopPrank();
 
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
@@ -397,7 +405,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
 
         vm.prank(alice);
-        cometWrapper.withdraw(173 * decimalScale, alice, alice);
+        cometWrapper.withdraw(aliceWithdrawAmount, alice, alice);
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
 
         skip(500 days);
@@ -420,7 +428,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertEq(cometWrapper.totalSupply(), unsigned104(comet.userBasic(wrapperAddress).principal));
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
         assertEq(cometWrapper.underlyingBalance(alice), 0);
-        assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance + aliceAssets, 1);
+        assertApproxEqAbs(comet.balanceOf(alice), aliceCometBalance + aliceAssets, 2);
         assertLe(comet.balanceOf(alice), aliceCometBalance + aliceAssets);
 
         vm.startPrank(bob);
@@ -432,7 +440,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertEq(cometWrapper.totalSupply(), unsigned104(comet.userBasic(wrapperAddress).principal));
         assertEq(cometWrapper.totalAssets(), comet.balanceOf(wrapperAddress));
         assertEq(cometWrapper.underlyingBalance(bob), 0);
-        assertApproxEqAbs(comet.balanceOf(bob), bobCometBalance + bobAssets, 1);
+        assertApproxEqAbs(comet.balanceOf(bob), bobCometBalance + bobAssets, 2);
         assertLe(comet.balanceOf(bob), bobCometBalance + bobAssets);
     }
 
@@ -949,5 +957,4 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
     }
 }
 
-// TODO: add fuzz testing for withdraw
 // TODO: add tests for max withdraw/redeem
