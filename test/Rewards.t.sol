@@ -90,7 +90,7 @@ abstract contract RewardsTest is CoreTest {
 
         enableRewardsAccrual();
         // Make sure CometRewards has ample COMP to claim
-        deal(address(comp), address(cometRewards), 10_000_000 ether);
+        deal(address(comp), address(cometRewards), 100_000_000 ether);
 
         // Make amount an even number so it can be divided equally by 2
         if (aliceAmount % 2 != 0) aliceAmount -= 1;
