@@ -7,13 +7,14 @@ import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { CometInterface, TotalsBasic } from "./vendor/CometInterface.sol";
 import { CometHelpers } from "./CometHelpers.sol";
 import { ICometRewards } from "./vendor/ICometRewards.sol";
+import { IERC7246 } from "./vendor/IERC7246.sol";
 
 /**
  * @title Comet Wrapper
  * @notice Wrapper contract that adds ERC4626 and ERC7246 functionality to the rebasing Comet token (e.g. cUSDCv3)
  * @author Compound & gjaldon
  */
-contract CometWrapper is ERC4626, CometHelpers {
+contract CometWrapper is ERC4626, IERC7246, CometHelpers {
     using SafeTransferLib for ERC20;
 
     struct UserBasic {
@@ -26,6 +27,12 @@ contract CometWrapper is ERC4626, CometHelpers {
 
     /// @notice Mapping of users to their rewards claimed
     mapping(address => uint256) public rewardsClaimed;
+
+    /// @notice Amount of an address's token balance that is encumbered
+    mapping (address => uint256) public encumberedBalanceOf;
+
+    /// @notice Amount encumbered from owner to taker (owner => taker => balance)
+    mapping (address => mapping (address => uint256)) public encumbrances;
 
     /// @notice The Comet address that this contract wraps
     CometInterface public immutable comet;
@@ -42,6 +49,8 @@ contract CometWrapper is ERC4626, CometHelpers {
     /** Custom errors **/
 
     error InsufficientAllowance();
+    error InsufficientAvailableBalance();
+    error InsufficientEncumbrance();
     error TimestampTooLarge();
     error UninitializedReward();
     error ZeroShares();
@@ -136,11 +145,7 @@ contract CometWrapper is ERC4626, CometHelpers {
         if (shares == 0) revert ZeroShares();
 
         if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
-            if (allowed < shares) revert InsufficientAllowance();
-            if (allowed != type(uint256).max) {
-                allowance[owner][msg.sender] = allowed - shares;
-            }
+            spendAllowanceInternal(owner, msg.sender, shares);
         }
 
         _burn(owner, shares);
@@ -162,11 +167,7 @@ contract CometWrapper is ERC4626, CometHelpers {
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
         if (shares == 0) revert ZeroShares();
         if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
-            if (allowed < shares) revert InsufficientAllowance();
-            if (allowed != type(uint256).max) {
-                allowance[owner][msg.sender] = allowed - shares;
-            }
+            spendAllowanceInternal(owner, msg.sender, shares);
         }
 
         accrueInternal(owner);
@@ -182,27 +183,43 @@ contract CometWrapper is ERC4626, CometHelpers {
 
     /**
      * @notice Transfer shares from caller to the recipient
-     * @param to The receiver of the shares (Wrapped Comet) to be transferred
+     * @dev Confirms the available balance of the caller is sufficient to cover transfer
+     * @param to The receiver of the shares to be transferred
      * @param amount The amount of shares to be transferred
      * @return bool Indicates success of the transfer
      */
     function transfer(address to, uint256 amount) public override returns (bool) {
+        if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
         transferInternal(msg.sender, to, amount);
         return true;
     }
 
     /**
-     * @notice Transfer shares from a specified source to a recipient
+     * @notice Transfer shares from a specified source to a recipient using the encumbrance and allowance of the caller
+     * @dev Spends the caller's encumbrance from `from` first, then their allowance from `from` (if necessary)
      * @param from The source of the shares to be transferred
-     * @param to The receiver of the shares (Wrapped Comet) to be transferred
+     * @param to The receiver of the shares to be transferred
      * @param amount The amount of shares to be transferred
      * @return bool Indicates success of the transfer
      */
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
-        uint256 allowed = msg.sender == from ? type(uint256).max : allowance[from][msg.sender];
-        if (allowed < amount) revert InsufficientAllowance();
-        if (allowed != type(uint256).max) {
-            allowance[from][msg.sender] = allowed - amount;
+        uint256 encumberedToTaker = encumbrances[from][msg.sender];
+        if (amount > encumberedToTaker)  {
+            uint256 excessAmount = amount - encumberedToTaker;
+
+            // WARNING: this check needs to happen BEFORE _releaseEncumbrance,
+            // otherwise the released encumbrance will increase
+            // availableBalanceOf(from), allowing dst to transfer tokens that
+            // are encumbered to someone else
+
+            if (availableBalanceOf(from) < excessAmount) revert InsufficientAvailableBalance();
+
+            // Exceeds Encumbrance, so spend all of it
+            releaseEncumbranceInternal(from, msg.sender, encumberedToTaker);
+
+            spendAllowanceInternal(from, msg.sender, excessAmount);
+        } else {
+            releaseEncumbranceInternal(from, msg.sender, amount);
         }
 
         transferInternal(from, to, amount);
@@ -270,7 +287,8 @@ contract CometWrapper is ERC4626, CometHelpers {
      * @notice Get the reward owed to an account
      * @dev This is designed to exactly match computation of rewards in Comet
      * and uses the same configuration as CometRewards. It is a combination of both
-     * [`getRewardOwed`](https://github.com/compound-finance/comet/blob/63e98e5d231ef50c755a9489eb346a561fc7663c/contracts/CometRewards.sol#L110) and [`getRewardAccrued`](https://github.com/compound-finance/comet/blob/63e98e5d231ef50c755a9489eb346a561fc7663c/contracts/CometRewards.sol#L171).
+     * [`getRewardOwed`](https://github.com/compound-finance/comet/blob/63e98e5d231ef50c755a9489eb346a561fc7663c/contracts/CometRewards.sol#L110)
+     * and [`getRewardAccrued`](https://github.com/compound-finance/comet/blob/63e98e5d231ef50c755a9489eb346a561fc7663c/contracts/CometRewards.sol#L171).
      * @param account The address to be queried
      * @return The total amount of rewards owed to an account
      */
@@ -472,5 +490,93 @@ contract CometWrapper is ERC4626, CometHelpers {
     function getNowInternal() internal view virtual returns (uint40) {
         if (block.timestamp >= 2**40) revert TimestampTooLarge();
         return uint40(block.timestamp);
+    }
+
+    /**
+     * @dev Updates `owner` s allowance for `spender` based on spent `amount`.
+     *
+     * Does not update the allowance amount in case of infinite allowance.
+     * Revert if not enough allowance is available.
+     *
+     * Might emit an {Approval} event.
+     */
+    function spendAllowanceInternal(
+        address owner,
+        address spender,
+        uint256 amount
+    ) internal virtual {
+        uint256 allowed = allowance[owner][spender];
+        if (allowed < amount) revert InsufficientAllowance();
+        if (allowed != type(uint256).max) {
+            allowance[owner][spender] = allowed - amount;
+            emit Approval(owner, spender, allowed - amount);
+        }
+    }
+
+    /** ERC7246 Functions **/
+
+    /**
+     * @notice Amount of an address's token balance that is not encumbered
+     * @param owner Address to check the available balance of
+     * @return uint256 Unencumbered balance
+     */
+    function availableBalanceOf(address owner) public view returns (uint256) {
+        return (balanceOf[owner] - encumberedBalanceOf[owner]);
+    }
+
+    /**
+     * @notice Increases the amount of tokens that the caller has encumbered to
+     * `taker` by `amount`
+     * @param taker Address to increase encumbrance to
+     * @param amount Amount of tokens to increase the encumbrance by
+     */
+    function encumber(address taker, uint256 amount) external {
+        encumberInternal(msg.sender, taker, amount);
+    }
+
+    /**
+     * @dev Increase `owner`'s encumbrance to `taker` by `amount`
+     */
+    function encumberInternal(address owner, address taker, uint256 amount) private {
+        if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
+        encumbrances[owner][taker] += amount;
+        encumberedBalanceOf[owner] += amount;
+        emit Encumber(owner, taker, amount);
+    }
+
+    /**
+     * @notice Increases the amount of tokens that `owner` has encumbered to
+     * `taker` by `amount`.
+     * @dev Spends the caller's `allowance`
+     * @param owner Address to increase encumbrance from
+     * @param taker Address to increase encumbrance to
+     * @param amount Amount of tokens to increase the encumbrance to `taker` by
+     */
+    function encumberFrom(address owner, address taker, uint256 amount) external {
+        if (allowance[owner][msg.sender] < amount) revert InsufficientAllowance();
+        spendAllowanceInternal(owner, msg.sender, amount);
+        encumberInternal(owner, taker , amount);
+    }
+
+    /**
+     * @notice Reduces amount of tokens encumbered from `owner` to caller by
+     * `amount`
+     * @dev Spends all of the encumbrance if `amount` is greater than `owner`'s
+     * current encumbrance to caller
+     * @param owner Address to decrease encumbrance from
+     * @param amount Amount of tokens to decrease the encumbrance by
+     */
+    function release(address owner, uint256 amount) external {
+        releaseEncumbranceInternal(owner, msg.sender, amount);
+    }
+
+    /**
+     * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
+     */
+    function releaseEncumbranceInternal(address owner, address taker, uint256 amount) private {
+        if (encumbrances[owner][taker] < amount) revert InsufficientEncumbrance();
+        encumbrances[owner][taker] -= amount;
+        encumberedBalanceOf[owner] -= amount;
+        emit Release(owner, taker, amount);
     }
 }
