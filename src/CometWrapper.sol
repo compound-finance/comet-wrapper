@@ -145,6 +145,7 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
         if (shares == 0) revert ZeroShares();
 
         if (msg.sender != owner) {
+            // TODO: spend encumbrance, then allowance
             spendAllowanceInternal(owner, msg.sender, shares);
         }
 
@@ -167,6 +168,7 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
         if (shares == 0) revert ZeroShares();
         if (msg.sender != owner) {
+            // TODO: spend encumbrance, then allowance
             spendAllowanceInternal(owner, msg.sender, shares);
         }
 

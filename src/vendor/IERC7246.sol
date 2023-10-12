@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause
-
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
 /**
