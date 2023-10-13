@@ -209,10 +209,9 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
         if (amount > encumberedToTaker)  {
             uint256 excessAmount = amount - encumberedToTaker;
 
-            // WARNING: this check needs to happen BEFORE _releaseEncumbrance,
-            // otherwise the released encumbrance will increase
-            // availableBalanceOf(from), allowing dst to transfer tokens that
-            // are encumbered to someone else
+            // WARNING: this check needs to happen BEFORE releaseEncumbranceInternal,
+            // otherwise the released encumbrance will increase availableBalanceOf(from),
+            // allowing msg.sender to transfer tokens that are encumbered to someone else
 
             if (availableBalanceOf(from) < excessAmount) revert InsufficientAvailableBalance();
 
