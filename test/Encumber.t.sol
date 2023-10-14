@@ -7,6 +7,17 @@ abstract contract EncumberTest is CoreTest {
     event Encumber(address indexed owner, address indexed taker, uint amount);
     event Release(address indexed owner, address indexed taker, uint amount);
 
+    function setUpAliceCometBalance() public {
+        deal(address(underlyingToken), address(cometHolder), 20_000 * decimalScale);
+        vm.startPrank(cometHolder);
+        underlyingToken.approve(address(comet), 20_000 * decimalScale);
+        comet.supply(address(underlyingToken), 20_000 * decimalScale);
+
+        comet.transfer(alice, 10_000 * decimalScale);
+        assertGt(comet.balanceOf(alice), 9999 * decimalScale);
+        vm.stopPrank();
+    }
+
     function test_availableBalanceOf() public {
         vm.startPrank(alice);
 
@@ -318,5 +329,167 @@ abstract contract EncumberTest is CoreTest {
         assertEq(cometWrapper.availableBalanceOf(alice), 0);
         assertEq(cometWrapper.encumberedBalanceOf(alice), 100e18);
         assertEq(cometWrapper.encumbrances(alice, bob), 100e18);
+    }
+
+    /* ===== ERC4626 + Encumbrance Tests ===== */
+
+    function test_withdrawFromUsesOnlyEncumbrance() public {
+        setUpAliceCometBalance();
+
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.mint(5_000 * decimalScale, alice);
+        vm.stopPrank();
+
+        uint256 sharesToEncumber = 2_700 * decimalScale;
+        uint256 sharesToRedeem = 2_500 * decimalScale;
+        uint256 assetsToWithdraw = cometWrapper.previewRedeem(sharesToRedeem);
+
+        vm.prank(alice);
+        cometWrapper.encumber(bob, sharesToEncumber);
+
+        vm.startPrank(bob);
+        // Encumbrance should be updated when withdraw is done
+        assertEq(cometWrapper.encumbrances(alice, bob), sharesToEncumber);
+        cometWrapper.withdraw(assetsToWithdraw, bob, alice);
+        assertEq(cometWrapper.encumbrances(alice, bob), sharesToEncumber - sharesToRedeem);
+        assertEq(cometWrapper.balanceOf(alice), 5_000 * decimalScale - sharesToRedeem);
+
+        // Reverts if trying to withdraw again now that encumbrance is used up
+        assetsToWithdraw = cometWrapper.previewRedeem(sharesToRedeem);
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
+        cometWrapper.withdraw(assetsToWithdraw, bob, alice);
+        vm.stopPrank();
+        assertEq(cometWrapper.encumbrances(alice, bob), sharesToEncumber - sharesToRedeem);
+    }
+
+    function test_withdrawFromUsesEncumbranceAndAllowance() public {
+        setUpAliceCometBalance();
+
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.mint(5_000 * decimalScale, alice);
+        vm.stopPrank();
+
+        uint256 sharesToEncumber = 1_000 * decimalScale;
+        uint256 sharesToApprove = 1_700 * decimalScale;
+        uint256 sharesToRedeem = 2_500 * decimalScale;
+        uint256 assetsToWithdraw = cometWrapper.previewRedeem(sharesToRedeem);
+
+        vm.startPrank(alice);
+        cometWrapper.encumber(bob, sharesToEncumber);
+        cometWrapper.approve(bob, sharesToApprove);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        // Encumbrance and allowance should be updated when withdraw is done
+        assertEq(cometWrapper.encumbrances(alice, bob), sharesToEncumber);
+        assertEq(cometWrapper.allowance(alice, bob), sharesToApprove);
+        cometWrapper.withdraw(assetsToWithdraw, bob, alice);
+        assertEq(cometWrapper.encumbrances(alice, bob), 0);
+        assertEq(cometWrapper.allowance(alice, bob), sharesToEncumber + sharesToApprove - sharesToRedeem);
+        assertEq(cometWrapper.balanceOf(alice), 5_000 * decimalScale - sharesToRedeem);
+
+        // Reverts if trying to withdraw again now that encumbrance and allowance is used up
+        assetsToWithdraw = cometWrapper.previewRedeem(sharesToRedeem);
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
+        cometWrapper.withdraw(assetsToWithdraw, bob, alice);
+        vm.stopPrank();
+        assertEq(cometWrapper.encumbrances(alice, bob), 0);
+        assertEq(cometWrapper.allowance(alice, bob), sharesToEncumber + sharesToApprove - sharesToRedeem);
+    }
+
+    function test_withdrawFrom_revertsOnInsufficientAvailableBalance() public {
+        setUpAliceCometBalance();
+
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.deposit(1_000 * decimalScale, alice);
+        // Encumber to Charlie so Alice's available balance is only 100
+        cometWrapper.encumber(charlie, 900 * decimalScale);
+        cometWrapper.approve(bob, 200 * decimalScale);
+        vm.stopPrank();
+
+        vm.prank(bob);
+        vm.expectRevert(CometWrapper.InsufficientAvailableBalance.selector);
+        cometWrapper.withdraw(200 * decimalScale, bob, alice);
+    }
+
+    function test_redeemFromUsesOnlyEncumbrance() public {
+        setUpAliceCometBalance();
+
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.mint(5_000 * decimalScale, alice);
+        vm.stopPrank();
+
+        uint256 sharesToEncumber = 2_700 * decimalScale;
+        uint256 sharesToRedeem = 2_500 * decimalScale;
+
+        vm.prank(alice);
+        cometWrapper.encumber(bob, sharesToEncumber);
+
+        vm.startPrank(bob);
+        // Encumbrances should be updated when redeem is done
+        assertEq(cometWrapper.encumbrances(alice, bob), sharesToEncumber);
+        cometWrapper.redeem(sharesToRedeem, bob, alice);
+        assertEq(cometWrapper.encumbrances(alice, bob), sharesToEncumber - sharesToRedeem);
+        assertEq(cometWrapper.balanceOf(alice), 5_000 * decimalScale - sharesToRedeem);
+
+        // Reverts if trying to redeem again now that encumbrance is used up
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
+        cometWrapper.redeem(sharesToRedeem, bob, alice);
+        vm.stopPrank();
+        assertEq(cometWrapper.encumbrances(alice, bob), sharesToEncumber - sharesToRedeem);
+    }
+
+    function test_redeemFromUsesEncumbranceAndAllowance() public {
+        setUpAliceCometBalance();
+
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.mint(5_000 * decimalScale, alice);
+        vm.stopPrank();
+
+        uint256 sharesToEncumber = 1_000 * decimalScale;
+        uint256 sharesToApprove = 1_700 * decimalScale;
+        uint256 sharesToRedeem = 2_500 * decimalScale;
+
+        vm.startPrank(alice);
+        cometWrapper.encumber(bob, sharesToEncumber);
+        cometWrapper.approve(bob, sharesToApprove);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        // Encumbrances and allowances should be updated when redeem is done
+        assertEq(cometWrapper.encumbrances(alice, bob), sharesToEncumber);
+        assertEq(cometWrapper.allowance(alice, bob), sharesToApprove);
+        cometWrapper.redeem(sharesToRedeem, bob, alice);
+        assertEq(cometWrapper.encumbrances(alice, bob), 0);
+        assertEq(cometWrapper.allowance(alice, bob), sharesToEncumber + sharesToApprove - sharesToRedeem);
+        assertEq(cometWrapper.balanceOf(alice), 5_000 * decimalScale - sharesToRedeem);
+
+        // Reverts if trying to redeem again now that encumbrance and allowance is used up
+        vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
+        cometWrapper.redeem(sharesToRedeem, bob, alice);
+        vm.stopPrank();
+        assertEq(cometWrapper.encumbrances(alice, bob), 0);
+        assertEq(cometWrapper.allowance(alice, bob), sharesToEncumber + sharesToApprove - sharesToRedeem);
+    }
+
+    function test_redeemFrom_revertsOnInsufficientAvailableBalance() public {
+        setUpAliceCometBalance();
+
+        vm.startPrank(alice);
+        comet.allow(wrapperAddress, true);
+        cometWrapper.mint(1_000 * decimalScale, alice);
+        // Encumber to Charlie so Alice's available balance is only 100
+        cometWrapper.encumber(charlie, 900 * decimalScale);
+        cometWrapper.approve(bob, 200 * decimalScale);
+        vm.stopPrank();
+
+        vm.prank(bob);
+        vm.expectRevert(CometWrapper.InsufficientAvailableBalance.selector);
+        cometWrapper.redeem(200 * decimalScale, bob, alice);
     }
 }

@@ -145,8 +145,7 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
         if (shares == 0) revert ZeroShares();
 
         if (msg.sender != owner) {
-            // TODO: spend encumbrance, then allowance
-            spendAllowanceInternal(owner, msg.sender, shares);
+            spendEncumbranceThenAllowanceInternal(owner, msg.sender, shares);
         }
 
         _burn(owner, shares);
@@ -168,8 +167,7 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
         if (shares == 0) revert ZeroShares();
         if (msg.sender != owner) {
-            // TODO: spend encumbrance, then allowance
-            spendAllowanceInternal(owner, msg.sender, shares);
+            spendEncumbranceThenAllowanceInternal(owner, msg.sender, shares);
         }
 
         accrueInternal(owner);
@@ -205,24 +203,7 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
      * @return bool Indicates success of the transfer
      */
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
-        uint256 encumberedToTaker = encumbrances[from][msg.sender];
-        if (amount > encumberedToTaker)  {
-            uint256 excessAmount = amount - encumberedToTaker;
-
-            // WARNING: this check needs to happen BEFORE releaseEncumbranceInternal,
-            // otherwise the released encumbrance will increase availableBalanceOf(from),
-            // allowing msg.sender to transfer tokens that are encumbered to someone else
-
-            if (availableBalanceOf(from) < excessAmount) revert InsufficientAvailableBalance();
-
-            // Exceeds Encumbrance, so spend all of it
-            releaseEncumbranceInternal(from, msg.sender, encumberedToTaker);
-
-            spendAllowanceInternal(from, msg.sender, excessAmount);
-        } else {
-            releaseEncumbranceInternal(from, msg.sender, amount);
-        }
-
+        spendEncumbranceThenAllowanceInternal(from, msg.sender, amount);
         transferInternal(from, to, amount);
         return true;
     }
@@ -488,7 +469,7 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
      * @dev The current timestamp
      * From https://github.com/compound-finance/comet/blob/main/contracts/Comet.sol#L375-L378
      */
-    function getNowInternal() internal view virtual returns (uint40) {
+    function getNowInternal() internal view returns (uint40) {
         if (block.timestamp >= 2**40) revert TimestampTooLarge();
         return uint40(block.timestamp);
     }
@@ -505,7 +486,7 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
         address owner,
         address spender,
         uint256 amount
-    ) internal virtual {
+    ) internal {
         uint256 allowed = allowance[owner][spender];
         if (allowed < amount) revert InsufficientAllowance();
         if (allowed != type(uint256).max) {
@@ -538,7 +519,7 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
     /**
      * @dev Increase `owner`'s encumbrance to `taker` by `amount`
      */
-    function encumberInternal(address owner, address taker, uint256 amount) private {
+    function encumberInternal(address owner, address taker, uint256 amount) internal {
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
         encumbrances[owner][taker] += amount;
         encumberedBalanceOf[owner] += amount;
@@ -574,10 +555,39 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
     /**
      * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
      */
-    function releaseEncumbranceInternal(address owner, address taker, uint256 amount) private {
+    function releaseEncumbranceInternal(address owner, address taker, uint256 amount) internal {
         if (encumbrances[owner][taker] < amount) revert InsufficientEncumbrance();
         encumbrances[owner][taker] -= amount;
         encumberedBalanceOf[owner] -= amount;
         emit Release(owner, taker, amount);
+    }
+
+    /**
+     * @notice Spends an amount of an `owner`'s encumbrance to `spender`, falling back to their allowance for any
+     * amount not covered by the encumbrance
+     * @param owner The address that encumbrances and allowances are spent from
+     * @param spender The address that is spending the encumbrance and allowance
+     * @param amount The amount of encumbrance and/or allowance to be spent
+     */
+    function spendEncumbranceThenAllowanceInternal(address owner, address spender, uint256 amount) internal {
+        uint256 encumberedToTaker = encumbrances[owner][spender];
+        if (amount > encumberedToTaker)  {
+            uint256 excessAmount = amount - encumberedToTaker;
+
+            // WARNING: This check needs to happen BEFORE releaseEncumbranceInternal,
+            // otherwise the released encumbrance will increase availableBalanceOf(from),
+            // allowing msg.sender to transfer tokens that are encumbered to someone else
+
+            // Check to make sure that the owner has enough available balance to move around
+            // so as not to move tokens encumbered to others
+            if (availableBalanceOf(owner) < excessAmount) revert InsufficientAvailableBalance();
+
+            // Exceeds Encumbrance, so spend all of it
+            releaseEncumbranceInternal(owner, spender, encumberedToTaker);
+
+            spendAllowanceInternal(owner, spender, excessAmount);
+        } else {
+            releaseEncumbranceInternal(owner, spender, amount);
+        }
     }
 }
