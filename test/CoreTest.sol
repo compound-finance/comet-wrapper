@@ -3,6 +3,7 @@ pragma solidity 0.8.21;
 
 import { Test } from "forge-std/Test.sol";
 import { CometWrapper, CometInterface, ICometRewards, CometHelpers, ERC20 } from "../src/CometWrapper.sol";
+import { EIP1271Signer } from "../src/test/EIP1271Signer.sol";
 
 abstract contract CoreTest is Test {
     function NETWORK() external virtual returns (string calldata);
@@ -34,9 +35,12 @@ abstract contract CoreTest is Test {
     address public wrapperAddress;
     uint256 public decimalScale;
 
-    address alice = address(0xABCD);
+    uint256 alicePrivateKey = 0xa11ce;
+    address alice = vm.addr(alicePrivateKey);
     address bob = address(0xDCBA);
     address charlie = address(0xCDAB);
+
+    address aliceContract; // contract that can verify EIP1271 signatures
 
     function setUp() public virtual {
         vm.label(alice, "alice");
@@ -61,6 +65,7 @@ abstract contract CoreTest is Test {
             new CometWrapper(ERC20(cometAddress), ICometRewards(rewardAddress), "Wrapped Comet UNDERLYING", "WcUNDERLYINGv3");
         wrapperAddress = address(cometWrapper);
         decimalScale = 10 ** underlyingToken.decimals();
+        aliceContract = address(new EIP1271Signer(alice));
     }
 
     function setUpFuzzTestAssumptions(uint256 amount) public view returns (uint256) {
