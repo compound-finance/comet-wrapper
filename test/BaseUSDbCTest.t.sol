@@ -2,7 +2,7 @@
 pragma solidity 0.8.21;
 
 import { Test } from "forge-std/Test.sol";
-import { CometWrapper, CometInterface, ICometRewards, CometHelpers, ERC20 } from "../src/CometWrapper.sol";
+import { CometWrapper, CometInterface, ICometRewards, CometHelpers } from "../src/CometWrapper.sol";
 import { BySigTest } from "./BySig.t.sol";
 import { CometWrapperTest } from "./CometWrapper.t.sol";
 import { CometWrapperInvariantTest } from "./CometWrapperInvariant.t.sol";

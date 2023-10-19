@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import { CoreTest, CometHelpers, CometWrapper, ERC20, ICometRewards } from "./CoreTest.sol";
+import { CoreTest, CometHelpers, CometWrapper, ICometRewards } from "./CoreTest.sol";
 
 // Tests for `permit` and `encumberBySig`
 abstract contract BySigTest is CoreTest {

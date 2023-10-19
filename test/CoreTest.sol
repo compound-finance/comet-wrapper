@@ -2,7 +2,8 @@
 pragma solidity 0.8.21;
 
 import { Test } from "forge-std/Test.sol";
-import { CometWrapper, CometInterface, ICometRewards, CometHelpers, ERC20 } from "../src/CometWrapper.sol";
+import { TransparentUpgradeableProxy } from "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import { CometWrapper, CometInterface, ICometRewards, CometHelpers, IERC20, IERC20Metadata } from "../src/CometWrapper.sol";
 import { EIP1271Signer } from "../src/test/EIP1271Signer.sol";
 
 abstract contract CoreTest is Test {
@@ -30,8 +31,8 @@ abstract contract CoreTest is Test {
     CometWrapper public cometWrapper;
     CometInterface public comet;
     ICometRewards public cometRewards;
-    ERC20 public underlyingToken;
-    ERC20 public comp;
+    IERC20 public underlyingToken;
+    IERC20 public comp;
     address public wrapperAddress;
     uint256 public decimalScale;
 
@@ -57,19 +58,22 @@ abstract contract CoreTest is Test {
         underlyingTokenHolder = this.UNDERLYING_TOKEN_HOLDER();
         cometHolder = this.COMET_HOLDER();
 
-        underlyingToken = ERC20(underlyingTokenAddress);
-        comp = ERC20(compAddress);
+        underlyingToken = IERC20(underlyingTokenAddress);
+        comp = IERC20(compAddress);
         comet = CometInterface(cometAddress);
         cometRewards = ICometRewards(rewardAddress);
-        cometWrapper =
-            new CometWrapper(ERC20(cometAddress), ICometRewards(rewardAddress), "Wrapped Comet UNDERLYING", "WcUNDERLYINGv3");
+        CometWrapper cometWrapperImpl =
+            new CometWrapper(IERC20(cometAddress), cometRewards);
+        TransparentUpgradeableProxy cometWrapperProxy = new TransparentUpgradeableProxy(address(cometWrapperImpl), proxyAdminAddress, "");
+        cometWrapper = CometWrapper(address(cometWrapperProxy));
+        cometWrapper.initialize("Wrapped Comet UNDERLYING", "WcUNDERLYINGv3");
         wrapperAddress = address(cometWrapper);
-        decimalScale = 10 ** underlyingToken.decimals();
+        decimalScale = 10 ** IERC20Metadata(underlyingTokenAddress).decimals();
         aliceContract = address(new EIP1271Signer(alice));
     }
 
     function setUpFuzzTestAssumptions(uint256 amount) public view returns (uint256) {
-        string memory underlyingSymbol = underlyingToken.symbol();
+        string memory underlyingSymbol = IERC20Metadata(underlyingTokenAddress).symbol();
         uint256 minBorrow;
         if (isEqual(underlyingSymbol, "USDC") || isEqual(underlyingSymbol, "USDbC")) {
             minBorrow = 100 * decimalScale;
@@ -84,7 +88,7 @@ abstract contract CoreTest is Test {
     }
 
     function setUpFuzzTestAssumptions(uint256 amount1, uint256 amount2) public view returns (uint256, uint256) {
-        string memory underlyingSymbol = underlyingToken.symbol();
+        string memory underlyingSymbol = IERC20Metadata(underlyingTokenAddress).symbol();
         uint256 minBorrow;
         if (isEqual(underlyingSymbol, "USDC") || isEqual(underlyingSymbol, "USDbC")) {
             minBorrow = 100 * decimalScale;
