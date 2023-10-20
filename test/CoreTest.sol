@@ -36,10 +36,12 @@ abstract contract CoreTest is Test {
 
     address alice = address(0xABCD);
     address bob = address(0xDCBA);
+    address charlie = address(0xCDAB);
 
     function setUp() public virtual {
         vm.label(alice, "alice");
         vm.label(bob, "bob");
+        vm.label(charlie, "charlie");
         vm.createSelectFork(vm.rpcUrl(this.NETWORK()), this.FORK_BLOCK_NUMBER());
 
         cometAddress = this.COMET_ADDRESS();

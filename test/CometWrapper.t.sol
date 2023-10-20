@@ -849,7 +849,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.mint(9_000 * decimalScale, alice);
-        cometWrapper.transferFrom(alice, bob, 1_337 * decimalScale);
+        cometWrapper.transfer(bob, 1_337 * decimalScale);
         vm.stopPrank();
 
         assertEq(cometWrapper.balanceOf(alice), 7_663 * decimalScale);
@@ -888,7 +888,13 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         vm.startPrank(alice);
         comet.allow(wrapperAddress, true);
         cometWrapper.mint(5_000 * decimalScale, alice);
+        // Alice needs to give approval to herself in order to `transferFrom`
+        vm.expectEmit(true, true, true, true);
+        emit Approval(alice, alice, 2_500 * decimalScale);
+        cometWrapper.approve(alice, 2_500 * decimalScale);
 
+        vm.expectEmit(true, true, true, true);
+        emit Approval(alice, alice, 0);
         cometWrapper.transferFrom(alice, bob, 2_500 * decimalScale);
         vm.stopPrank();
 
@@ -910,11 +916,15 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         cometWrapper.transferFrom(alice, bob, 5_000 * decimalScale);
 
         vm.prank(alice);
+        vm.expectEmit(true, true, true, true);
+        emit Approval(alice, bob, 2_700 * decimalScale);
         cometWrapper.approve(bob, 2_700 * decimalScale);
 
         vm.startPrank(bob);
         // Allowances should be updated when transferFrom is done
         assertEq(cometWrapper.allowance(alice, bob), 2_700 * decimalScale);
+        vm.expectEmit(true, true, true, true);
+        emit Approval(alice, bob, 200 * decimalScale);
         cometWrapper.transferFrom(alice, bob, 2_500 * decimalScale);
         assertEq(cometWrapper.balanceOf(alice), 2_500 * decimalScale);
         assertEq(cometWrapper.balanceOf(bob), 2_500 * decimalScale);
@@ -927,6 +937,8 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
 
         // Infinite allowance does not decrease allowance
         vm.prank(bob);
+        vm.expectEmit(true, true, true, true);
+        emit Approval(bob, alice, type(uint256).max);
         cometWrapper.approve(alice, type(uint256).max);
         assertEq(cometWrapper.allowance(bob, alice), type(uint256).max);
 

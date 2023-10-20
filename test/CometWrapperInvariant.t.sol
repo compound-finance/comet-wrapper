@@ -154,25 +154,25 @@ abstract contract CometWrapperInvariantTest is CoreTest, CometMath {
 
         for (uint256 i; i < 5; i++) {
             vm.startPrank(alice);
-            cometWrapper.transferFrom(alice, bob, cometWrapper.balanceOf(alice)/5);
+            cometWrapper.transfer(bob, cometWrapper.balanceOf(alice)/5);
             assertEq(cometWrapper.totalAssets(), totalAssets);
             assertEq(cometWrapper.totalSupply(), totalSupply);
             vm.stopPrank();
 
             vm.startPrank(bob);
-            cometWrapper.transferFrom(bob, alice, cometWrapper.balanceOf(bob)/5);
+            cometWrapper.transfer(alice, cometWrapper.balanceOf(bob)/5);
             assertEq(cometWrapper.totalAssets(), totalAssets);
             assertEq(cometWrapper.totalSupply(), totalSupply);
             vm.stopPrank();
 
             vm.startPrank(bob);
-            cometWrapper.transferFrom(bob, alice, cometWrapper.balanceOf(bob)/5);
+            cometWrapper.transfer(alice, cometWrapper.balanceOf(bob)/5);
             assertEq(cometWrapper.totalAssets(), totalAssets);
             assertEq(cometWrapper.totalSupply(), totalSupply);
             vm.stopPrank();
 
             vm.startPrank(alice);
-            cometWrapper.transferFrom(alice, bob, cometWrapper.balanceOf(alice)/5);
+            cometWrapper.transfer(bob, cometWrapper.balanceOf(alice)/5);
             assertEq(cometWrapper.totalAssets(), totalAssets);
             assertEq(cometWrapper.totalSupply(), totalSupply);
             vm.stopPrank();

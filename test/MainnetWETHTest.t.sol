@@ -5,9 +5,10 @@ import { Test } from "forge-std/Test.sol";
 import { CometWrapper, CometInterface, ICometRewards, CometHelpers, ERC20 } from "../src/CometWrapper.sol";
 import { CometWrapperTest } from "./CometWrapper.t.sol";
 import { CometWrapperInvariantTest } from "./CometWrapperInvariant.t.sol";
+import { EncumberTest } from "./Encumber.t.sol";
 import { RewardsTest } from "./Rewards.t.sol";
 
-contract MainnetWETHTest is CometWrapperTest, CometWrapperInvariantTest, RewardsTest {
+contract MainnetWETHTest is CometWrapperTest, CometWrapperInvariantTest, EncumberTest, RewardsTest {
     string public override NETWORK = "mainnet";
     uint256 public override FORK_BLOCK_NUMBER = 18285773;
 
