@@ -3,7 +3,9 @@ pragma solidity 0.8.21;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import {CometWrapper, CometInterface, ICometRewards, CometHelpers, ERC20} from "../src/CometWrapper.sol";
+import { TransparentUpgradeableProxy } from "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import { ProxyAdmin } from "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import { CometWrapper, CometInterface, ICometRewards, CometHelpers, IERC20 } from "../src/CometWrapper.sol";
 
 // Deploy with:
 // $ source .env
@@ -17,16 +19,21 @@ import {CometWrapper, CometInterface, ICometRewards, CometHelpers, ERC20} from "
 // TOKEN_SYMBOL
 
 contract DeployCometWrapper is Script {
+    ProxyAdmin proxyAdmin;
+    TransparentUpgradeableProxy cometWrapperProxy;
     address internal cometAddr;
     address internal rewardsAddr;
+    address internal proxyAdminAddr;
     string internal tokenName;
     string internal tokenSymbol;
 
     function run() public {
         cometAddr = vm.envAddress("COMET_ADDRESS");
         rewardsAddr = vm.envAddress("REWARDS_ADDRESS");
-        tokenName = vm.envString("TOKEN_NAME");       // Wrapped Comet WETH || Wrapped Comet USDC
+        proxyAdminAddr = vm.envAddress("PROXY_ADMIN");
+        tokenName = vm.envString("TOKEN_NAME");         // Wrapped Comet WETH || Wrapped Comet USDC
         tokenSymbol = vm.envString("TOKEN_SYMBOL");     // WcWETHv3 || WcUSDCv3
+
         vm.startBroadcast();
 
         console.log("=============================================================");
@@ -34,11 +41,18 @@ contract DeployCometWrapper is Script {
         console.log("Token Symbol:    ", tokenSymbol);
         console.log("Comet Address:   ", cometAddr);
         console.log("Rewards Address: ", rewardsAddr);
+        console.log("Proxy Admin Address: ", proxyAdminAddr);
         console.log("=============================================================");
 
-        CometWrapper cometWrapper =
-            new CometWrapper(ERC20(cometAddr), ICometRewards(rewardsAddr), tokenName, tokenSymbol);
-        CometInterface comet = CometInterface(cometAddr);
+        CometWrapper cometWrapperImpl =
+            new CometWrapper(CometInterface(cometAddr), ICometRewards(rewardsAddr));
+        cometWrapperProxy = new TransparentUpgradeableProxy(address(cometWrapperImpl), proxyAdminAddr, "");
+
+        // Wrap in ABI to support easier calls
+        CometWrapper cometWrapper = CometWrapper(address(cometWrapperProxy));
+
+        // Initialize the wrapper contract
+        cometWrapper.initialize(tokenName, tokenSymbol);
 
         vm.stopBroadcast();
     }

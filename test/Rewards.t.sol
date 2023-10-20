@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.21;
 
-import { CoreTest } from "./CoreTest.sol";
-import { CometWrapper, ICometRewards, CometHelpers, ERC20 } from "../src/CometWrapper.sol";
+import { CoreTest, TransparentUpgradeableProxy } from "./CoreTest.sol";
+import { CometWrapper, ICometRewards, CometHelpers, IERC20 } from "../src/CometWrapper.sol";
 import { Deployable, ICometConfigurator, ICometProxyAdmin } from "../src/vendor/ICometConfigurator.sol";
 
 abstract contract RewardsTest is CoreTest {
@@ -76,8 +76,11 @@ abstract contract RewardsTest is CoreTest {
         address newRewardsAddr = makeAddr("newRewards");
         vm.etch(newRewardsAddr, code);
 
-        CometWrapper newCometWrapper =
-            new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "New Comet Wrapper", "NewWcUNDERLYINGv3");
+        CometWrapper cometWrapperImpl =
+            new CometWrapper(comet, ICometRewards(newRewardsAddr));
+        TransparentUpgradeableProxy cometWrapperProxy = new TransparentUpgradeableProxy(address(cometWrapperImpl), proxyAdminAddress, "");
+        CometWrapper newCometWrapper = CometWrapper(address(cometWrapperProxy));
+        newCometWrapper.initialize("Wrapped Comet UNDERLYING", "WcUNDERLYINGv3");
 
         vm.expectRevert(CometWrapper.UninitializedReward.selector);
         newCometWrapper.getRewardOwed(alice);
@@ -158,8 +161,11 @@ abstract contract RewardsTest is CoreTest {
         address newRewardsAddr = makeAddr("newRewards");
         vm.etch(newRewardsAddr, code);
 
-        CometWrapper newCometWrapper =
-            new CometWrapper(ERC20(cometAddress), ICometRewards(newRewardsAddr), "New Comet Wrapper", "NewWcUNDERLYINGv3");
+        CometWrapper cometWrapperImpl =
+            new CometWrapper(comet, ICometRewards(newRewardsAddr));
+        TransparentUpgradeableProxy cometWrapperProxy = new TransparentUpgradeableProxy(address(cometWrapperImpl), proxyAdminAddress, "");
+        CometWrapper newCometWrapper = CometWrapper(address(cometWrapperProxy));
+        newCometWrapper.initialize("Wrapped Comet UNDERLYING", "WcUNDERLYINGv3");
 
         vm.prank(alice);
         vm.expectRevert(CometWrapper.UninitializedReward.selector);
