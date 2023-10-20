@@ -536,7 +536,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertLe(comet.balanceOf(alice), expectedAliceCometBalance);
     }
 
-    function test_withdrawUsesAllowances() public {
+    function test_withdrawFromUsesAllowances() public {
         setUpAliceAndBobCometBalances();
 
         vm.startPrank(alice);
@@ -550,8 +550,8 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         vm.stopPrank();
 
         uint256 sharesToApprove = 2_700 * decimalScale;
-        uint256 sharesToWithdraw = 2_500 * decimalScale;
-        uint256 assetsToWithdraw = cometWrapper.previewRedeem(sharesToWithdraw);
+        uint256 sharesToRedeem = 2_500 * decimalScale;
+        uint256 assetsToWithdraw = cometWrapper.previewRedeem(sharesToRedeem);
 
         vm.prank(alice);
         cometWrapper.approve(bob, sharesToApprove);
@@ -560,13 +560,15 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         // Allowances should be updated when withdraw is done
         assertEq(cometWrapper.allowance(alice, bob), sharesToApprove);
         cometWrapper.withdraw(assetsToWithdraw, bob, alice);
-        assertEq(cometWrapper.balanceOf(alice), 5_000 * decimalScale - sharesToWithdraw);
+        assertEq(cometWrapper.allowance(alice, bob), sharesToApprove - sharesToRedeem);
+        assertEq(cometWrapper.balanceOf(alice), 5_000 * decimalScale - sharesToRedeem);
 
         // Reverts if trying to withdraw again now that allowance is used up
+        assetsToWithdraw = cometWrapper.previewRedeem(sharesToRedeem);
         vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
         cometWrapper.withdraw(assetsToWithdraw, bob, alice);
         vm.stopPrank();
-        assertEq(cometWrapper.allowance(alice, bob), sharesToApprove - sharesToWithdraw);
+        assertEq(cometWrapper.allowance(alice, bob), sharesToApprove - sharesToRedeem);
 
         // Infinite allowance does not decrease allowance
         vm.prank(bob);
@@ -579,7 +581,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         vm.stopPrank();
     }
 
-    function test_withdraw_revertsOnInsufficientAllowance() public {
+    function test_withdrawFrom_revertsOnInsufficientAllowance() public {
         setUpAliceAndBobCometBalances();
 
         vm.startPrank(alice);
@@ -774,7 +776,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertLe(comet.balanceOf(alice), expectedAliceCometBalance);
     }
 
-    function test_redeemUsesAllowances() public {
+    function test_redeemFromUsesAllowances() public {
         setUpAliceAndBobCometBalances();
 
         vm.startPrank(alice);
@@ -788,7 +790,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         vm.stopPrank();
 
         uint256 sharesToApprove = 2_700 * decimalScale;
-        uint256 sharesToWithdraw = 2_500 * decimalScale;
+        uint256 sharesToRedeem = 2_500 * decimalScale;
 
         vm.prank(alice);
         cometWrapper.approve(bob, sharesToApprove);
@@ -796,14 +798,15 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         vm.startPrank(bob);
         // Allowances should be updated when redeem is done
         assertEq(cometWrapper.allowance(alice, bob), sharesToApprove);
-        cometWrapper.redeem(sharesToWithdraw, bob, alice);
-        assertApproxEqAbs(cometWrapper.balanceOf(alice), 5_000 * decimalScale - sharesToWithdraw, 1);
+        cometWrapper.redeem(sharesToRedeem, bob, alice);
+        assertEq(cometWrapper.allowance(alice, bob), sharesToApprove - sharesToRedeem);
+        assertEq(cometWrapper.balanceOf(alice), 5_000 * decimalScale - sharesToRedeem);
 
         // Reverts if trying to redeem again now that allowance is used up
         vm.expectRevert(CometWrapper.InsufficientAllowance.selector);
-        cometWrapper.redeem(sharesToWithdraw, bob, alice);
+        cometWrapper.redeem(sharesToRedeem, bob, alice);
         vm.stopPrank();
-        assertEq(cometWrapper.allowance(alice, bob), sharesToApprove - sharesToWithdraw);
+        assertEq(cometWrapper.allowance(alice, bob), sharesToApprove - sharesToRedeem);
 
         // Infinite allowance does not decrease allowance
         vm.prank(bob);
@@ -811,12 +814,12 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
         assertEq(cometWrapper.allowance(bob, alice), type(uint256).max);
 
         vm.startPrank(alice);
-        cometWrapper.redeem(sharesToWithdraw, alice, bob);
+        cometWrapper.redeem(sharesToRedeem, alice, bob);
         assertEq(cometWrapper.allowance(bob, alice), type(uint256).max);
         vm.stopPrank();
     }
 
-    function test_redeem_revertsOnInsufficientAllowance() public {
+    function test_redeemFrom_revertsOnInsufficientAllowance() public {
         setUpAliceAndBobCometBalances();
 
         vm.startPrank(alice);
