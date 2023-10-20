@@ -77,7 +77,7 @@ abstract contract RewardsTest is CoreTest {
         vm.etch(newRewardsAddr, code);
 
         CometWrapper cometWrapperImpl =
-            new CometWrapper(IERC20(cometAddress), ICometRewards(newRewardsAddr));
+            new CometWrapper(comet, ICometRewards(newRewardsAddr));
         TransparentUpgradeableProxy cometWrapperProxy = new TransparentUpgradeableProxy(address(cometWrapperImpl), proxyAdminAddress, "");
         CometWrapper newCometWrapper = CometWrapper(address(cometWrapperProxy));
         newCometWrapper.initialize("Wrapped Comet UNDERLYING", "WcUNDERLYINGv3");
@@ -162,7 +162,7 @@ abstract contract RewardsTest is CoreTest {
         vm.etch(newRewardsAddr, code);
 
         CometWrapper cometWrapperImpl =
-            new CometWrapper(IERC20(cometAddress), ICometRewards(newRewardsAddr));
+            new CometWrapper(comet, ICometRewards(newRewardsAddr));
         TransparentUpgradeableProxy cometWrapperProxy = new TransparentUpgradeableProxy(address(cometWrapperImpl), proxyAdminAddress, "");
         CometWrapper newCometWrapper = CometWrapper(address(cometWrapperProxy));
         newCometWrapper.initialize("Wrapped Comet UNDERLYING", "WcUNDERLYINGv3");

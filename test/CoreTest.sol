@@ -63,7 +63,7 @@ abstract contract CoreTest is Test {
         comet = CometInterface(cometAddress);
         cometRewards = ICometRewards(rewardAddress);
         CometWrapper cometWrapperImpl =
-            new CometWrapper(IERC20(cometAddress), cometRewards);
+            new CometWrapper(comet, cometRewards);
         TransparentUpgradeableProxy cometWrapperProxy = new TransparentUpgradeableProxy(address(cometWrapperImpl), proxyAdminAddress, "");
         cometWrapper = CometWrapper(address(cometWrapperProxy));
         cometWrapper.initialize("Wrapped Comet UNDERLYING", "WcUNDERLYINGv3");

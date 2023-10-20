@@ -5,7 +5,12 @@ import { CometInterface, TotalsBasic } from "./vendor/CometInterface.sol";
 import { CometHelpers } from "./CometHelpers.sol";
 import { ICometRewards } from "./vendor/ICometRewards.sol";
 import { IERC7246 } from "./vendor/IERC7246.sol";
-import { ERC4626Upgradeable, ERC20Upgradeable as ERC20, IERC20Upgradeable as IERC20, IERC20MetadataUpgradeable as IERC20Metadata } from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import {
+    ERC4626Upgradeable,
+    ERC20Upgradeable as ERC20,
+    IERC20Upgradeable as IERC20,
+    IERC20MetadataUpgradeable as IERC20Metadata
+} from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import { SafeERC20Upgradeable } from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { ECDSA } from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
@@ -90,11 +95,11 @@ contract CometWrapper is ERC4626Upgradeable, IERC7246, CometHelpers {
      * @param comet_ The Comet token to wrap
      * @param cometRewards_ The rewards contract for the Comet market
      */
-    constructor(IERC20 comet_, ICometRewards cometRewards_) {
+    constructor(CometInterface comet_, ICometRewards cometRewards_) {
         // Minimal validation that contract is CometRewards
         cometRewards_.rewardConfig(address(comet_));
 
-        comet = CometInterface(address(comet_));
+        comet = comet_;
         cometRewards = cometRewards_;
         trackingIndexScale = comet.trackingIndexScale();
         accrualDescaleFactor = uint64(10 ** IERC20Metadata(address(comet_)).decimals()) / BASE_ACCRUAL_SCALE;

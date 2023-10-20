@@ -45,7 +45,7 @@ contract DeployCometWrapper is Script {
         console.log("=============================================================");
 
         CometWrapper cometWrapperImpl =
-            new CometWrapper(IERC20(cometAddr), ICometRewards(rewardsAddr));
+            new CometWrapper(CometInterface(cometAddr), ICometRewards(rewardsAddr));
         cometWrapperProxy = new TransparentUpgradeableProxy(address(cometWrapperImpl), proxyAdminAddr, "");
 
         // Wrap in ABI to support easier calls

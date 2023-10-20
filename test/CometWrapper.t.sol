@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.21;
 
-import { CoreTest, CometHelpers, CometWrapper, IERC20, ICometRewards } from "./CoreTest.sol";
+import { CoreTest, CometHelpers, CometInterface, CometWrapper, IERC20, ICometRewards } from "./CoreTest.sol";
 import { CometMath } from "../src/vendor/CometMath.sol";
 
 abstract contract CometWrapperTest is CoreTest, CometMath {
@@ -39,25 +39,25 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
     function test_constructor_revertsOnInvalidComet() public {
         // reverts on zero address
         vm.expectRevert();
-        new CometWrapper(IERC20(address(0)), cometRewards);
+        new CometWrapper(CometInterface(address(0)), cometRewards);
 
         // reverts on non-zero address that isn't ERC20 and Comet
         vm.expectRevert();
-        new CometWrapper(IERC20(address(1)), cometRewards);
+        new CometWrapper(CometInterface(address(1)), cometRewards);
 
         // reverts on ERC20-only contract
         vm.expectRevert();
-        new CometWrapper(IERC20(underlyingToken), cometRewards);
+        new CometWrapper(CometInterface(address(underlyingToken)), cometRewards);
     }
 
     function test_constructor_revertsOnInvalidCometRewards() public {
         // reverts on zero address
         vm.expectRevert();
-        new CometWrapper(IERC20(cometAddress), ICometRewards(address(0)));
+        new CometWrapper(comet, ICometRewards(address(0)));
 
         // reverts on non-zero address that isn't CometRewards
         vm.expectRevert();
-        new CometWrapper(IERC20(cometAddress), ICometRewards(address(1)));
+        new CometWrapper(comet, ICometRewards(address(1)));
     }
 
     function test_initialize_revertsIfCalledAgain() public {
@@ -67,7 +67,7 @@ abstract contract CometWrapperTest is CoreTest, CometMath {
 
     function test_initialize_revertsIfCalledOnImplementation() public {
         CometWrapper cometWrapperImpl =
-            new CometWrapper(IERC20(cometAddress), cometRewards);
+            new CometWrapper(comet, cometRewards);
 
         vm.expectRevert(bytes("Initializable: contract is already initialized"));
         cometWrapperImpl.initialize("new name", "new symbol");
