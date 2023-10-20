@@ -8,6 +8,7 @@ import { CometInterface, TotalsBasic } from "./vendor/CometInterface.sol";
 import { CometHelpers } from "./CometHelpers.sol";
 import { ICometRewards } from "./vendor/ICometRewards.sol";
 import { IERC7246 } from "./vendor/IERC7246.sol";
+import { ECDSA } from "openzeppelin/utils/cryptography/ECDSA.sol";
 
 /**
  * @title Comet Wrapper
@@ -21,6 +22,23 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
         uint64 baseTrackingAccrued;
         uint64 baseTrackingIndex;
     }
+
+    /// @notice The major version of this contract
+    string public constant VERSION = "1";
+
+    /// @dev The EIP-712 typehash for authorization via permit
+    bytes32 internal constant AUTHORIZATION_TYPEHASH = keccak256("Authorization(address owner,address spender,uint256 amount,uint256 nonce,uint256 expiry)");
+
+    /// @dev The EIP-712 typehash for encumber via encumberBySig
+    bytes32 internal constant ENCUMBER_TYPEHASH = keccak256("Encumber(address owner,address taker,uint256 amount,uint256 nonce,uint256 expiry)");
+
+    /// @dev The EIP-712 typehash for the contract's domain
+    bytes32 internal constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+
+    /// @dev The magic value that a contract's `isValidSignature(bytes32 hash, bytes signature)` function should
+    ///  return for a valid signature
+    ///  See https://eips.ethereum.org/EIPS/eip-1271
+    bytes4 internal constant EIP1271_MAGIC_VALUE = 0x1626ba7e;
 
     /// @notice Mapping of users to basic data
     mapping(address => UserBasic) public userBasic;
@@ -48,9 +66,13 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
 
     /** Custom errors **/
 
+    error BadSignatory();
+    error EIP1271VerificationFailed();
     error InsufficientAllowance();
     error InsufficientAvailableBalance();
     error InsufficientEncumbrance();
+    error InvalidSignatureS();
+    error SignatureExpired();
     error TimestampTooLarge();
     error UninitializedReward();
     error ZeroShares();
@@ -589,5 +611,123 @@ contract CometWrapper is ERC4626, IERC7246, CometHelpers {
         } else {
             releaseEncumbranceInternal(owner, spender, amount);
         }
+    }
+
+    /**
+     * @notice Returns the domain separator used in the encoding of the signature for permit
+     * @return bytes32 The domain separator
+     */
+    function DOMAIN_SEPARATOR() public view override returns (bytes32) {
+        return keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), keccak256(bytes(VERSION)), block.chainid, address(this)));
+    }
+
+    /**
+     * @notice Sets approval amount for a spender via signature from signatory
+     * @param owner The address that signed the signature
+     * @param spender The address to authorize (or rescind authorization from)
+     * @param amount Amount that `owner` is approving for `spender`
+     * @param expiry Expiration time for the signature
+     * @param v The recovery byte of the signature
+     * @param r Half of the ECDSA signature pair
+     * @param s Half of the ECDSA signature pair
+     */
+    function permit(
+        address owner,
+        address spender,
+        uint256 amount,
+        uint256 expiry,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public override {
+        if (block.timestamp >= expiry) revert SignatureExpired();
+
+        uint256 nonce = nonces[owner];
+        bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, owner, spender, amount, nonce, expiry));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
+        if (isValidSignature(owner, digest, v, r, s)) {
+            nonces[owner]++;
+            allowance[owner][spender] = amount;
+            emit Approval(owner, spender, amount);
+        } else {
+            revert BadSignatory();
+        }
+    }
+
+    /**
+     * @notice Sets an encumbrance from owner to taker via signature from signatory
+     * @param owner The address that signed the signature
+     * @param taker The address to create an encumbrance to
+     * @param amount Amount that owner is encumbering to taker
+     * @param expiry Expiration time for the signature
+     * @param v The recovery byte of the signature
+     * @param r Half of the ECDSA signature pair
+     * @param s Half of the ECDSA signature pair
+     */
+    function encumberBySig(
+        address owner,
+        address taker,
+        uint256 amount,
+        uint256 expiry,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        if (block.timestamp >= expiry) revert SignatureExpired();
+
+        uint256 nonce = nonces[owner];
+        bytes32 structHash = keccak256(abi.encode(ENCUMBER_TYPEHASH, owner, taker, amount, nonce, expiry));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
+        if (isValidSignature(owner, digest, v, r, s)) {
+            nonces[owner]++;
+            encumberInternal(owner, taker, amount);
+        } else {
+            revert BadSignatory();
+        }
+    }
+
+    /**
+     * @notice Checks if a signature is valid
+     * @dev Supports EIP-1271 signatures for smart contracts
+     * @param signer The address that signed the signature
+     * @param digest The hashed message that is signed
+     * @param v The recovery byte of the signature
+     * @param r Half of the ECDSA signature pair
+     * @param s Half of the ECDSA signature pair
+     * @return bool Whether the signature is valid
+     */
+    function isValidSignature(
+        address signer,
+        bytes32 digest,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) internal view returns (bool) {
+        if (hasCode(signer)) {
+            bytes memory signature = abi.encodePacked(r, s, v);
+            (bool success, bytes memory data) = signer.staticcall(
+                abi.encodeWithSelector(EIP1271_MAGIC_VALUE, digest, signature)
+            );
+            if (success == false) revert EIP1271VerificationFailed();
+            bytes4 returnValue = abi.decode(data, (bytes4));
+            return returnValue == EIP1271_MAGIC_VALUE;
+        } else {
+            (address recoveredSigner, ECDSA.RecoverError recoverError) = ECDSA.tryRecover(digest, v, r, s);
+            if (recoverError == ECDSA.RecoverError.InvalidSignatureS) revert InvalidSignatureS();
+            if (recoverError == ECDSA.RecoverError.InvalidSignature) revert BadSignatory();
+            if (recoveredSigner != signer) revert BadSignatory();
+            return true;
+        }
+    }
+
+    /**
+     * @notice Checks if an address has code deployed to it
+     * @param addr The address to check
+     * @return bool Whether the address contains code
+     */
+    function hasCode(address addr) internal view returns (bool) {
+        uint256 size;
+        assembly { size := extcodesize(addr) }
+        return size > 0;
     }
 }
