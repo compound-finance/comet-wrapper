@@ -567,7 +567,6 @@ contract CometWrapper is ERC4626Upgradeable, IERC7246, CometHelpers {
      * @param amount Amount of tokens to increase the encumbrance to `taker` by
      */
     function encumberFrom(address owner, address taker, uint256 amount) external {
-        if (allowance(owner, msg.sender) < amount) revert InsufficientAllowance();
         spendAllowanceInternal(owner, msg.sender, amount);
         encumberInternal(owner, taker , amount);
     }
