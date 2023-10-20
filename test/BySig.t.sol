@@ -34,7 +34,7 @@ abstract contract BySigTest is CoreTest {
 
     /* ===== Permit ===== */
 
-    function testPermit() public {
+    function test_permit() public {
         // bob's allowance from alice is 0
         assertEq(cometWrapper.allowance(alice, bob), 0);
 
@@ -55,7 +55,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce + 1);
     }
 
-    function testPermitRevertsForBadOwner() public {
+    function test_permit_revertsForBadOwner() public {
         // bob's allowance from alice is 0
         assertEq(cometWrapper.allowance(alice, bob), 0);
 
@@ -77,7 +77,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testPermitRevertsForBadSpender() public {
+    function test_permit_revertsForBadSpender() public {
         // bob's allowance from alice is 0
         assertEq(cometWrapper.allowance(alice, bob), 0);
 
@@ -99,7 +99,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testPermitRevertsForBadAmount() public {
+    function test_permit_revertsForBadAmount() public {
         // bob's allowance from alice is 0
         assertEq(cometWrapper.allowance(alice, bob), 0);
 
@@ -121,7 +121,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testPermitRevertsForBadExpiry() public {
+    function test_permit_revertsForBadExpiry() public {
         // bob's allowance from alice is 0
         assertEq(cometWrapper.allowance(alice, bob), 0);
 
@@ -143,7 +143,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testPermitRevertsForBadNonce() public {
+    function test_permit_revertsForBadNonce() public {
         // bob's allowance from alice is 0
         assertEq(cometWrapper.allowance(alice, bob), 0);
 
@@ -167,7 +167,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testPermitRevertsOnRepeatedCall() public {
+    function test_permit_revertsOnRepeatedCall() public {
         // bob's allowance from alice is 0
         assertEq(cometWrapper.allowance(alice, bob), 0);
 
@@ -204,7 +204,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce + 1);
     }
 
-    function testPermitRevertsForExpiredSignature() public {
+    function test_permit_revertsForExpiredSignature() public {
         // bob's allowance from alice is 0
         assertEq(cometWrapper.allowance(alice, bob), 0);
 
@@ -229,7 +229,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testPermitRevertsInvalidS() public {
+    function test_permit_revertsInvalidS() public {
         // bob's allowance from alice is 0
         assertEq(cometWrapper.allowance(alice, bob), 0);
 
@@ -256,7 +256,7 @@ abstract contract BySigTest is CoreTest {
 
     /* ===== EncumberBySig ===== */
 
-    function testEncumberBySig() public {
+    function test_encumberBySig() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -286,7 +286,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce + 1);
     }
 
-    function testEncumberBySigRevertsForBadOwner() public {
+    function test_encumberBySig_revertsForBadOwner() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -318,7 +318,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testEncumberBySigRevertsForBadSpender() public {
+    function test_encumberBySig_revertsForBadSpender() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -350,7 +350,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testEncumberBySigRevertsForBadAmount() public {
+    function test_encumberBySig_revertsForBadAmount() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -382,7 +382,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testEncumberBySigRevertsForBadExpiry() public {
+    function test_encumberBySig_revertsForBadExpiry() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -414,7 +414,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testEncumberBySigRevertsForBadNonce() public {
+    function test_encumberBySig_revertsForBadNonce() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -448,7 +448,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testEncumberBySigRevertsOnRepeatedCall() public {
+    function test_encumberBySig_revertsOnRepeatedCall() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
         uint256 transferAmount = 30e18;
@@ -503,7 +503,7 @@ abstract contract BySigTest is CoreTest {
         vm.stopPrank();
     }
 
-    function testEncumberBySigRevertsForExpiredSignature() public {
+    function test_encumberBySig_revertsForExpiredSignature() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -539,7 +539,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testEncumberBySigRevertsInvalidS() public {
+    function test_encumberBySig_revertsInvalidS() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -576,7 +576,7 @@ abstract contract BySigTest is CoreTest {
 
     /* ===== EIP1271 Tests ===== */
 
-    function testPermitEIP1271() public {
+    function test_permitEIP1271() public {
         // bob's allowance from alice's contract is 0
         assertEq(cometWrapper.allowance(aliceContract, bob), 0);
 
@@ -597,7 +597,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce + 1);
     }
 
-    function testPermitRevertsForBadOwnerEIP1271() public {
+    function test_permit_revertsForBadOwnerEIP1271() public {
         // bob's allowance from alice's contract is 0
         assertEq(cometWrapper.allowance(aliceContract, bob), 0);
 
@@ -619,7 +619,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testPermitRevertsForBadSpenderEIP1271() public {
+    function test_permit_revertsForBadSpenderEIP1271() public {
         // bob's allowance from alice's contract is 0
         assertEq(cometWrapper.allowance(aliceContract, bob), 0);
 
@@ -641,7 +641,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testPermitRevertsForBadAmountEIP1271() public {
+    function test_permit_revertsForBadAmountEIP1271() public {
         // bob's allowance from alice's contract is 0
         assertEq(cometWrapper.allowance(aliceContract, bob), 0);
 
@@ -663,7 +663,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testPermitRevertsForBadExpiryEIP1271() public {
+    function test_permit_revertsForBadExpiryEIP1271() public {
         // bob's allowance from alice's contract is 0
         assertEq(cometWrapper.allowance(aliceContract, bob), 0);
 
@@ -685,7 +685,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(alice), nonce);
     }
 
-    function testPermitRevertsForBadNonceEIP1271() public {
+    function test_permit_revertsForBadNonceEIP1271() public {
         // bob's allowance from alice's contract is 0
         assertEq(cometWrapper.allowance(aliceContract, bob), 0);
 
@@ -709,7 +709,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testPermitRevertsOnRepeatedCallEIP1271() public {
+    function test_permit_revertsOnRepeatedCallEIP1271() public {
         // bob's allowance from alice's contract is 0
         assertEq(cometWrapper.allowance(aliceContract, bob), 0);
 
@@ -746,7 +746,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce + 1);
     }
 
-    function testPermitRevertsForExpiredSignatureEIP1271() public {
+    function test_permit_revertsForExpiredSignatureEIP1271() public {
         // bob's allowance from alice's contract is 0
         assertEq(cometWrapper.allowance(aliceContract, bob), 0);
 
@@ -771,7 +771,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testPermitRevertsInvalidVEIP1271() public {
+    function test_permit_revertsInvalidVEIP1271() public {
         // bob's allowance from alice's contract is 0
         assertEq(cometWrapper.allowance(aliceContract, bob), 0);
 
@@ -794,7 +794,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testPermitRevertsInvalidSEIP1271() public {
+    function test_permit_revertsInvalidSEIP1271() public {
         // bob's allowance from alice's contract is 0
         assertEq(cometWrapper.allowance(aliceContract, bob), 0);
 
@@ -819,7 +819,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testEncumberBySigEIP1271() public {
+    function test_encumberBySigEIP1271() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -849,7 +849,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce + 1);
     }
 
-    function testEncumberBySigRevertsForBadSpenderEIP1271() public {
+    function test_encumberBySig_revertsForBadSpenderEIP1271() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -881,7 +881,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testEncumberBySigRevertsForBadAmountEIP1271() public {
+    function test_encumberBySig_revertsForBadAmountEIP1271() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -913,7 +913,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testEncumberBySigRevertsForBadExpiryEIP1271() public {
+    function test_encumberBySig_revertsForBadExpiryEIP1271() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -945,7 +945,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testEncumberBySigRevertsForBadNonceEIP1271() public {
+    function test_encumberBySig_revertsForBadNonceEIP1271() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -979,7 +979,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testEncumberBySigRevertsOnRepeatedCallEIP1271() public {
+    function test_encumberBySig_revertsOnRepeatedCallEIP1271() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
         uint256 transferAmount = 30e18;
@@ -1034,7 +1034,7 @@ abstract contract BySigTest is CoreTest {
         vm.stopPrank();
     }
 
-    function testEncumberBySigRevertsForExpiredSignatureEIP1271() public {
+    function test_encumberBySig_revertsForExpiredSignatureEIP1271() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -1070,7 +1070,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testEncumberBySigRevertsInvalidVEIP1271() public {
+    function test_encumberBySig_revertsInvalidVEIP1271() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
@@ -1103,7 +1103,7 @@ abstract contract BySigTest is CoreTest {
         assertEq(cometWrapper.nonces(aliceContract), nonce);
     }
 
-    function testEncumberBySigRevertsInvalidSEIP1271() public {
+    function test_encumberBySig_revertsInvalidSEIP1271() public {
         uint256 aliceBalance = 100e18;
         uint256 encumbranceAmount = 60e18;
 
