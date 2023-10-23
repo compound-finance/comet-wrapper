@@ -31,7 +31,6 @@ To nullify inflation attacks, `CometWrapper` maintains internal accounting of al
 | Mainnet  | WETH       | Upcoming                                   |
 | Polygon  | USDC       | Upcoming                                   |
 | Arbitrum | USDC       | Upcoming                                   |
-| Avalance | USDC       | Upcoming                                   |
 | Base     | USDC       | Upcoming                                   |
 | Base     | WETH       | Upcoming                                   |
 
