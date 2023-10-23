@@ -8,15 +8,19 @@ import { ProxyAdmin } from "openzeppelin-contracts/contracts/proxy/transparent/P
 import { CometWrapper, CometInterface, ICometRewards, CometHelpers, IERC20 } from "../src/CometWrapper.sol";
 
 // Deploy with:
-// $ source .env
-// $ forge script script/DeployCometWrapper.s.sol --rpc-url $GOERLI_RPC_URL --broadcast --verify -vvvv -t --sender address
-// Change COMET_ADDRESS and REWARDS_ADDRESS to use the correct addresses for their corresponding CHAIN. Use the correct
-// RPC too for the CHAIN you wish to deploy to.
-// Required ENV Vars:
+// $ set -a && source .env && ./script/deploy.sh
+
+// Required ENV vars:
+// RPC_URL
+// DEPLOYER_PK
 // COMET_ADDRESS
 // REWARDS_ADDRESS
+// PROXY_ADMIN_ADDRESS
 // TOKEN_NAME
 // TOKEN_SYMBOL
+
+// Optional but suggested ENV vars:
+// ETHERSCAN_KEY
 
 contract DeployCometWrapper is Script {
     ProxyAdmin proxyAdmin;
@@ -30,11 +34,12 @@ contract DeployCometWrapper is Script {
     function run() public {
         cometAddr = vm.envAddress("COMET_ADDRESS");
         rewardsAddr = vm.envAddress("REWARDS_ADDRESS");
-        proxyAdminAddr = vm.envAddress("PROXY_ADMIN");
+        proxyAdminAddr = vm.envAddress("PROXY_ADMIN_ADDRESS");
         tokenName = vm.envString("TOKEN_NAME");         // Wrapped Comet WETH || Wrapped Comet USDC
         tokenSymbol = vm.envString("TOKEN_SYMBOL");     // WcWETHv3 || WcUSDCv3
+        address deployer = vm.addr(vm.envUint("DEPLOYER_PK"));
 
-        vm.startBroadcast();
+        vm.startBroadcast(deployer);
 
         console.log("=============================================================");
         console.log("Token Name:      ", tokenName);
