@@ -25,6 +25,8 @@ To nullify inflation attacks, `CometWrapper` maintains internal accounting of al
 
 ## Deployments
 
+### Mainnets
+
 | Network  | Base Asset | CometWrapper Address                       |
 | -------- | ---------- | ------------------------------------------ |
 | Mainnet  | USDC       | Upcoming                                   |
@@ -33,6 +35,13 @@ To nullify inflation attacks, `CometWrapper` maintains internal accounting of al
 | Arbitrum | USDC       | Upcoming                                   |
 | Base     | USDC       | Upcoming                                   |
 | Base     | WETH       | Upcoming                                   |
+
+### Testnets
+
+| Network  | Base Asset | CometWrapper Address                       |
+| -------- | ---------- | ------------------------------------------ |
+| Goerli   | USDC       | 0x00674edDE603C5AB9A3F284B41Ef58ff31d1cd7B |
+| Mumbai   | USDC       | 0x797D7126C35E0894Ba76043dA874095db4776035 |
 
 ## Usage
 
