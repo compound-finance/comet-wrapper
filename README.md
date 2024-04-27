@@ -40,10 +40,7 @@ To nullify inflation attacks, `CometWrapper` maintains internal accounting of al
 
 | Network  | Base Asset | CometWrapper Address                       |
 | -------- | ---------- | ------------------------------------------ |
-| Goerli   | USDC       | 0x00674edDE603C5AB9A3F284B41Ef58ff31d1cd7B |
-| Mumbai   | USDC       | 0x797D7126C35E0894Ba76043dA874095db4776035 |
-| Base     | USDC       | 0xcCB6009A6eC62FEd3091F670c4F9DDe55A0559FE |
-| Base     | WETH       | 0x0182621987C4C0D05685EF4E9e3F8323d58D963b |
+| Sepolia  | USDC       | 0xC3836072018B4D590488b851d574556f2EeB895a |
 
 ## Usage
 
