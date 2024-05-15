@@ -193,7 +193,7 @@ contract CometWrapper is ERC4626Upgradeable, IERC7246, CometHelpers {
     }
 
     /**
-     * @notice Redeems shares (Wrapped Comet) in exchange for assets (Wrapped Comet).
+     * @notice Redeems shares (Wrapped Comet) in exchange for assets (cTokens).
      * Caller can only redeem shares from owner if they have been given allowance to.
      * @param shares The amount of shares to be redeemed
      * @param receiver The recipient address of the withdrawn assets

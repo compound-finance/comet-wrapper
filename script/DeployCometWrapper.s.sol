@@ -36,7 +36,7 @@ contract DeployCometWrapper is Script {
         rewardsAddr = vm.envAddress("REWARDS_ADDRESS");
         proxyAdminAddr = vm.envAddress("PROXY_ADMIN_ADDRESS");
         tokenName = vm.envString("TOKEN_NAME");         // Wrapped Comet WETH || Wrapped Comet USDC
-        tokenSymbol = vm.envString("TOKEN_SYMBOL");     // WcWETHv3 || WcUSDCv3
+        tokenSymbol = vm.envString("TOKEN_SYMBOL");     // wcWETHv3 || wcUSDCv3
         address deployer = vm.addr(vm.envUint("DEPLOYER_PK"));
 
         vm.startBroadcast(deployer);
